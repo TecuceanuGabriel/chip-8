@@ -5,6 +5,22 @@ import (
 	"os"
 )
 
+type System struct {
+	memory []byte
+	pc     uint16
+}
+
+const fontPath = "./FONT"
+
+func load_font() []byte {
+	font, err := os.ReadFile(fontPath)
+	if err != nil {
+		fmt.Printf("Failed to read rom: %v\n", fontPath)
+		os.Exit(1)
+	}
+	return font
+}
+
 func fetch(rom []byte) []byte {
 	// TODO:
 	return rom
