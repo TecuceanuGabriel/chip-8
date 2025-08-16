@@ -5,6 +5,18 @@ import (
 	"os"
 )
 
+func fetch(rom []byte) []byte {
+	// TODO:
+	return rom
+}
+
+func decode(instruction []byte) (bool, error) {
+	switch instruction {
+	//TODO:
+	}
+	return true, nil
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("usage: ./prog rom_path")
@@ -15,9 +27,21 @@ func main() {
 
 	rom, err := os.ReadFile(rom_path)
 	if err != nil {
-		fmt.Println("Failed to read rom: {}", rom_path)
+		fmt.Printf("Failed to read rom: %v\n", rom_path)
 		os.Exit(1)
 	}
 
 	fmt.Println(rom[0])
+
+	for {
+		instruction := fetch(rom)
+		exit, err := decode(instruction)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		if exit {
+			break
+		}
+	}
 }
