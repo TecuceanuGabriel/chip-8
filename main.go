@@ -10,20 +10,55 @@ type System struct {
 	pc     uint16
 }
 
-const fontPath = "./FONT"
+const (
+	memorySize          = 4096
+	firstInstructionAdd = 0x200
+	fontStartAdd        = 0x50
+)
 
-func load_font() []byte {
-	font, err := os.ReadFile(fontPath)
-	if err != nil {
-		fmt.Printf("Failed to read rom: %v\n", fontPath)
-		os.Exit(1)
-	}
-	return font
+var font = []byte{
+	0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+	0x20, 0x60, 0x20, 0x20, 0x70, // 1
+	0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+	0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+	0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+	0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+	0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+	0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+	0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+	0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+	0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+	0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+	0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+	0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+	0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+	0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 }
 
-func fetch(rom []byte) []byte {
+func createSystem() *System {
+	system := System{
+		memory: make([]byte, memorySize),
+		pc:     firstInstructionAdd,
+	}
+
+	copy(system.memory[fontStartAdd:], font)
+
+	rom_path := os.Args[1]
+
+	rom, err := os.ReadFile(rom_path)
+	if err != nil {
+		fmt.Printf("Failed to read rom: %v\n", rom_path)
+		os.Exit(1)
+	}
+
+	copy(system.memory[firstInstructionAdd:], rom)
+
+	return &system
+}
+
+func fetch(system *System) []byte {
 	// TODO:
-	return rom
+	return []byte{}
 }
 
 func decode(instruction []byte) (bool, error) {
@@ -39,18 +74,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	rom_path := os.Args[1]
-
-	rom, err := os.ReadFile(rom_path)
-	if err != nil {
-		fmt.Printf("Failed to read rom: %v\n", rom_path)
-		os.Exit(1)
-	}
-
-	fmt.Println(rom[0])
+	system := createSystem()
 
 	for {
-		instruction := fetch(rom)
+		instruction := fetch(system)
 		exit, err := decode(instruction)
 		if err != nil {
 			fmt.Println(err)
