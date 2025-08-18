@@ -57,13 +57,14 @@ func createSystem() *System {
 }
 
 func fetch(system *System) []byte {
-	// TODO:
-	return []byte{}
+	value := system.memory[system.pc : system.pc+2]
+	system.pc += 2
+	return value
 }
 
 func decode(instruction []byte) (bool, error) {
+	fmt.Printf("Instruction: %x", instruction)
 	switch instruction {
-	//TODO:
 	}
 	return true, nil
 }
