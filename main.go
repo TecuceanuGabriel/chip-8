@@ -6,8 +6,9 @@ import (
 )
 
 type System struct {
-	memory []byte
-	pc     uint16
+	memory    []byte
+	pc        uint16
+	registers []byte
 }
 
 const (
@@ -37,8 +38,9 @@ var font = []byte{
 
 func createSystem() *System {
 	system := System{
-		memory: make([]byte, memorySize),
-		pc:     firstInstructionAdd,
+		memory:    make([]byte, memorySize),
+		pc:        firstInstructionAdd,
+		registers: make([]byte, 16),
 	}
 
 	copy(system.memory[fontStartAdd:], font)
