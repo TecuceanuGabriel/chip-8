@@ -3,12 +3,15 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/TecuceanuGabriel/chip-8/internal/stack"
 )
 
 type System struct {
-	memory    []byte
-	pc        uint16
-	registers []byte
+	memory     []byte
+	pc         uint16
+	registers  []byte
+	call_stack stack.Stack[[2]byte]
 }
 
 const (
@@ -36,8 +39,8 @@ var font = []byte{
 	0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 }
 
-func createSystem() *System {
-	system := System{
+func createSystem() (system *System) {
+	system = &System{
 		memory:    make([]byte, memorySize),
 		pc:        firstInstructionAdd,
 		registers: make([]byte, 16),
@@ -55,13 +58,13 @@ func createSystem() *System {
 
 	copy(system.memory[firstInstructionAdd:], rom)
 
-	return &system
+	return system
 }
 
-func fetch(system *System) []byte {
-	value := system.memory[system.pc : system.pc+2]
+func fetch(system *System) (instruction []byte) {
+	instruction = system.memory[system.pc : system.pc+2]
 	system.pc += 2
-	return value
+	return instruction
 }
 
 func decode(instruction []byte) (bool, error) {
