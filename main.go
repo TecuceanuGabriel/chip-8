@@ -101,8 +101,6 @@ func main() {
 
 	system := createSystem()
 
-	system.display.DrawSprite([]byte{0, 1}, 10, 10)
-
 	for {
 		instruction := fetch(system)
 		exit, err := decode(instruction)

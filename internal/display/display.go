@@ -2,9 +2,9 @@ package display
 
 import (
 	"fmt"
-	"os/exec"
-	"strconv"
-	"strings"
+	"os"
+
+	"golang.org/x/term"
 )
 
 const (
@@ -17,26 +17,8 @@ type Display struct {
 }
 
 func GetTerminalSize() (width, height int, err error) {
-	cmd := exec.Command("stty", "size")
-	out_str, err := cmd.Output()
-
-	if err != nil {
-		return 0, 0, err
-	}
-
-	fields := strings.Fields(strings.Trim(string(out_str), " "))
-
-	width, err = strconv.Atoi(fields[0])
-	if err != nil {
-		return 0, 0, err
-	}
-
-	height, err = strconv.Atoi(fields[1])
-	if err != nil {
-		return 0, 0, err
-	}
-
-	return width, height, nil
+	fd := int(os.Stdout.Fd())
+	return term.GetSize(fd)
 }
 
 func ClearScreen() {
@@ -59,9 +41,15 @@ func (d *Display) drawCell(fill bool, pos_x, pos_y int) {
 }
 
 func (d *Display) DrawSprite(sprite []byte, pos_x, pos_y, n int) (err error) {
-	width, height, err := GetTerminalSize()
+	tWidth, tHeight, err := GetTerminalSize()
 	if err != nil {
+		fmt.Println(err)
 		return err
+	}
+
+	if tWidth < width || tHeight < height {
+		fmt.Println("Terminal window to small")
+		os.Exit(1)
 	}
 
 	pos_x = pos_x % width
@@ -69,14 +57,11 @@ func (d *Display) DrawSprite(sprite []byte, pos_x, pos_y, n int) (err error) {
 
 	for i := range n {
 		line := sprite[i]
-
 		for j := range 8 {
 			fill := (line>>j)&1 == 1
 			d.drawCell(fill, pos_x+j, pos_y+i)
 		}
 	}
-
-	d.drawCell(true, 10, 10)
 
 	return nil
 }
