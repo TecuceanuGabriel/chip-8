@@ -64,14 +64,14 @@ func createSystem() (system *System) {
 	return system
 }
 
-func fetch(system *System) (instruction []byte) {
+func (system *System) fetch() (instruction []byte) {
 	instruction = system.memory[system.pc : system.pc+2]
 	system.pc += 2
 	return instruction
 }
 
-func decode(instruction []byte) (bool, error) {
-	fmt.Printf("Instruction: %x\n", instruction)
+func (system *System) decode(instruction []byte) (bool, error) {
+	// fmt.Printf("Instruction: %x\n", instruction)
 
 	firstByte := instruction[0]
 	secondByte := instruction[1]
@@ -81,17 +81,19 @@ func decode(instruction []byte) (bool, error) {
 	thirdNibble := secondByte >> 4
 	fourthNibble := secondByte & 0x0F
 
-	last3Nibbles := (uint16(secondNibble) << 8) | (uint16(thirdNibble) << 4) | uint16(fourthNibble)
+	last2Nibbles := (thirdNibble << 4) | fourthNibble
+	last3Nibbles := (uint16(secondNibble) << 8) | uint16(last2Nibbles)
 
-	fmt.Printf("Bytes: %x%x\n", firstByte, secondByte)
-	fmt.Printf("nibbles: %x%x%x%x\n", firstNibble, secondNibble, thirdNibble, fourthNibble)
-	fmt.Printf("last 3: %x\n", last3Nibbles)
+	// fmt.Printf("Bytes: %x%x\n", firstByte, secondByte)
+	// fmt.Printf("nibbles: %x%x%x%x\n", firstNibble, secondNibble, thirdNibble, fourthNibble)
+	// fmt.Printf("last 2: %x\n", last2Nibbles)
+	// fmt.Printf("last 3: %x\n", last3Nibbles)
 
 	switch firstNibble {
 	case 0:
 		{
 			if fourthNibble == 0 {
-				// TODO: clear display
+				system.display.ClearScreen()
 			} else {
 				// TODO: return from subrutine
 			}
@@ -99,27 +101,43 @@ func decode(instruction []byte) (bool, error) {
 	case 1:
 		{
 			// TODO: jump to nnn
+			system.pc = last3Nibbles
 		}
 	case 6:
 		{
 			// TODO: load nn to reg
+			system.registers[secondNibble] = last2Nibbles
 		}
 	case 7:
 		{
 			// TODO: add to reg nn
+			system.registers[secondNibble] += last2Nibbles
 		}
 	case 0xA:
 		{
 			// TODO: set index reg I
+			system.iReg = last3Nibbles
 		}
 	case 0xD:
 		{
 			// TODO: draw
+			sprite := system.memory[system.iReg : system.iReg+uint16(fourthNibble)]
+			system.registers[0xF] = 0
+			pos_x := system.registers[secondNibble]
+			pos_y := system.registers[thirdNibble]
+			erasing, err := system.display.DrawSprite(sprite, pos_x, pos_y, fourthNibble)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			if erasing {
+				system.registers[0xF] = 1
+			}
 		}
 
 	}
 
-	return true, nil
+	return false, nil
 }
 
 func main() {
@@ -131,8 +149,8 @@ func main() {
 	system := createSystem()
 
 	for {
-		instruction := fetch(system)
-		exit, err := decode(instruction)
+		instruction := system.fetch()
+		exit, err := system.decode(instruction)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
