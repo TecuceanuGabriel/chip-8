@@ -84,51 +84,41 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 
 	switch firstNibble {
 	case 0:
-		{
-			if fourthNibble == 0 {
-				system.display.ClearScreen()
-			} else {
-				// TODO: return from subrutine
-			}
+		if fourthNibble == 0 { // CLS
+			system.display.ClearScreen()
+		} else {
+			// TODO: return from subrutine
 		}
-	case 1:
-		{
-			// TODO: jump to nnn
-			system.pc = last3Nibbles
-		}
-	case 6:
-		{
-			// TODO: load nn to reg
-			system.registers[secondNibble] = last2Nibbles
-		}
-	case 7:
-		{
-			// TODO: add to reg nn
-			system.registers[secondNibble] += last2Nibbles
-		}
-	case 0xA:
-		{
-			// TODO: set index reg I
-			system.iReg = last3Nibbles
-		}
-	case 0xD:
-		{
-			// TODO: draw
-			sprite := system.memory[system.iReg : system.iReg+uint16(fourthNibble)]
-			system.registers[0xF] = 0
-			pos_x := system.registers[secondNibble]
-			pos_y := system.registers[thirdNibble]
-			erasing, err := system.display.DrawSprite(sprite, pos_x, pos_y, fourthNibble)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			if erasing {
-				system.registers[0xF] = 1
-			}
-		}
+	case 1: // JP addr
+		system.pc = last3Nibbles
+	case 6: // LD Vx, byte
+		system.registers[secondNibble] = last2Nibbles
+	case 7: // ADD Vx, byte
+		system.registers[secondNibble] += last2Nibbles
+	case 0xA: // LD I, addr
+		system.iReg = last3Nibbles
+	case 0xD: // DRW Vx, Vy, nibble
+		system.drw(secondNibble, thirdNibble, fourthNibble)
 
 	}
 
 	return false, nil
+}
+
+func (system *System) drw(x_addr, y_addr, n byte) {
+	sprite := system.memory[system.iReg : system.iReg+uint16(n)]
+
+	pos_x := system.registers[x_addr]
+	pos_y := system.registers[y_addr]
+
+	system.registers[0xF] = 0
+	erasing, err := system.display.DrawSprite(sprite, pos_x, pos_y, n)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	if erasing {
+		system.registers[0xF] = 1
+	}
 }

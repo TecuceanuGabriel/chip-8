@@ -79,7 +79,7 @@ func (d *Display) drawCell(fill bool, pos_x, pos_y byte) (erasing bool) {
 		}
 
 		// TODO: use one print
-		fmt.Print("\x1b[?25l") // hide cursor
+		fmt.Print("\x1b[?25l") // hide cursor TODO: move in init
 		fmt.Printf("\x1b[%v;%vH", pos_y+1, pos_x+1)
 		fmt.Printf("\x1b[48;5;%vm", color)
 		fmt.Print("█")
