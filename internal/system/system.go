@@ -93,10 +93,18 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 		system.pc = last3Nibbles
 	case 2: // CALL addr
 		system.call(last3Nibbles)
+	case 3: // SE Vx, byte
+		system.skip_equal_im(secondNibble, secondByte)
+	case 4: // SNE Vx, byte
+		system.skip_not_equal_im(secondNibble, secondByte)
+	case 5: // SE Vx, Vy
+		system.skip_equal(secondNibble, thirdNibble)
 	case 6: // LD Vx, byte
 		system.registers[secondNibble] = last2Nibbles
 	case 7: // ADD Vx, byte
 		system.registers[secondNibble] += last2Nibbles
+	case 9: // SNE Vx, Vy
+		system.skip_not_equal(secondNibble, thirdNibble)
 	case 0xA: // LD I, addr
 		system.iReg = last3Nibbles
 	case 0xD: // DRW Vx, Vy, nibble
@@ -123,6 +131,30 @@ func (system *System) ret() {
 func (system *System) call(addr uint16) {
 	system.call_stack.Push(system.pc)
 	system.pc = addr
+}
+
+func (system *System) skip_equal(x_addr, y_addr byte) {
+	if system.registers[x_addr] == system.registers[y_addr] {
+		system.pc += 2
+	}
+}
+
+func (system *System) skip_not_equal(x_addr, y_addr byte) {
+	if system.registers[x_addr] != system.registers[y_addr] {
+		system.pc += 2
+	}
+}
+
+func (system *System) skip_equal_im(x_addr, val byte) {
+	if system.registers[x_addr] == val {
+		system.pc += 2
+	}
+}
+
+func (system *System) skip_not_equal_im(x_addr, val byte) {
+	if system.registers[x_addr] != val {
+		system.pc += 2
+	}
 }
 
 func (system *System) drw(x_addr, y_addr, n byte) {
