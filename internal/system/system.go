@@ -2,6 +2,7 @@ package system
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"os"
 
 	"github.com/TecuceanuGabriel/chip-8/internal/display"
@@ -111,6 +112,8 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 		system.iReg = last3Nibbles
 	case 0xB: // JP V0, addr TODO: comp problem: make configurable?
 		system.pc = uint16(system.registers[0]) + last3Nibbles
+	case 0xC: // RND Vx, byte
+		system.registers[secondNibble] = byte(rand.UintN(256)) & secondByte
 	case 0xD: // DRW Vx, Vy, nibble
 		system.drw(secondNibble, thirdNibble, fourthNibble)
 	default:
