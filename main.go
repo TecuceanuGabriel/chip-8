@@ -11,8 +11,9 @@ import (
 type System struct {
 	memory     []byte
 	pc         uint16
-	registers  []byte
 	call_stack stack.Stack[[2]byte]
+	registers  []byte
+	iReg       uint16
 	display    display.Display
 }
 
@@ -87,6 +88,34 @@ func decode(instruction []byte) (bool, error) {
 	fmt.Printf("last 3: %x\n", last3Nibbles)
 
 	switch firstNibble {
+	case 0:
+		{
+			if fourthNibble == 0 {
+				// TODO: clear display
+			} else {
+				// TODO: return from subrutine
+			}
+		}
+	case 1:
+		{
+			// TODO: jump to nnn
+		}
+	case 6:
+		{
+			// TODO: load nn to reg
+		}
+	case 7:
+		{
+			// TODO: add to reg nn
+		}
+	case 0xA:
+		{
+			// TODO: set index reg I
+		}
+	case 0xD:
+		{
+			// TODO: draw
+		}
 
 	}
 
