@@ -109,6 +109,8 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 		system.skip_not_equal(secondNibble, thirdNibble)
 	case 0xA: // LD I, addr
 		system.iReg = last3Nibbles
+	case 0xB: // JP V0, addr TODO: comp problem: make configurable?
+		system.pc = uint16(system.registers[0]) + last3Nibbles
 	case 0xD: // DRW Vx, Vy, nibble
 		system.drw(secondNibble, thirdNibble, fourthNibble)
 	default:
@@ -219,6 +221,7 @@ func (system *System) subn(x_addr, y_addr byte) {
 	system.registers[x_addr] = y - x
 }
 
+// TODO: make shifts configurable (use Vy or not)
 func (system *System) shr(x_addr byte) {
 	x := system.registers[x_addr]
 	if x&1 == 1 {
