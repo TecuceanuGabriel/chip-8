@@ -30,32 +30,6 @@ func (d *Display) ClearScreen() {
 	}
 }
 
-func (d *Display) drawCell(fill bool, pos_x, pos_y byte) (erasing bool) {
-	erasing = false
-	idx := pos_x + pos_y*width
-
-	if fill == true {
-		var color string
-		if d.pixels[idx] == true {
-			d.pixels[idx] = false
-			color = "255"
-			erasing = true
-		} else {
-			d.pixels[idx] = true
-			color = "0"
-		}
-
-		// TODO: use one print
-		fmt.Print("\x1b[?25l") // hide cursor
-		fmt.Printf("\x1b[%v;%vH", pos_y+1, pos_x+1)
-		fmt.Printf("\x1b[48;5;%vm", color)
-		fmt.Print("█")
-		fmt.Print("\x1b[0m") // reset
-	}
-
-	return erasing
-}
-
 func (d *Display) DrawSprite(sprite []byte, pos_x, pos_y, n byte) (erasing bool, err error) {
 	erasing = false
 
@@ -87,4 +61,30 @@ func (d *Display) DrawSprite(sprite []byte, pos_x, pos_y, n byte) (erasing bool,
 	}
 
 	return erasing, nil
+}
+
+func (d *Display) drawCell(fill bool, pos_x, pos_y byte) (erasing bool) {
+	erasing = false
+	idx := pos_x + pos_y*width
+
+	if fill == true {
+		var color string
+		if d.pixels[idx] == true {
+			d.pixels[idx] = false
+			color = "255"
+			erasing = true
+		} else {
+			d.pixels[idx] = true
+			color = "0"
+		}
+
+		// TODO: use one print
+		fmt.Print("\x1b[?25l") // hide cursor
+		fmt.Printf("\x1b[%v;%vH", pos_y+1, pos_x+1)
+		fmt.Printf("\x1b[48;5;%vm", color)
+		fmt.Print("█")
+		fmt.Print("\x1b[0m") // reset
+	}
+
+	return erasing
 }

@@ -71,8 +71,6 @@ func (system *System) Fetch() (instruction []byte) {
 }
 
 func (system *System) Decode(instruction []byte) (bool, error) {
-	// fmt.Printf("Instruction: %x\n", instruction)
-
 	firstByte := instruction[0]
 	secondByte := instruction[1]
 
@@ -83,11 +81,6 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 
 	last2Nibbles := (thirdNibble << 4) | fourthNibble
 	last3Nibbles := (uint16(secondNibble) << 8) | uint16(last2Nibbles)
-
-	// fmt.Printf("Bytes: %x%x\n", firstByte, secondByte)
-	// fmt.Printf("nibbles: %x%x%x%x\n", firstNibble, secondNibble, thirdNibble, fourthNibble)
-	// fmt.Printf("last 2: %x\n", last2Nibbles)
-	// fmt.Printf("last 3: %x\n", last3Nibbles)
 
 	switch firstNibble {
 	case 0:
