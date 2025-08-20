@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/TecuceanuGabriel/chip-8/internal/display"
 	"github.com/TecuceanuGabriel/chip-8/internal/stack"
 )
 
@@ -12,6 +13,7 @@ type System struct {
 	pc         uint16
 	registers  []byte
 	call_stack stack.Stack[[2]byte]
+	display    display.Display
 }
 
 const (
@@ -98,6 +100,8 @@ func main() {
 	}
 
 	system := createSystem()
+
+	system.display.DrawSprite([]byte{0, 1}, 10, 10)
 
 	for {
 		instruction := fetch(system)
