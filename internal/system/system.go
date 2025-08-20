@@ -36,7 +36,7 @@ const (
 type System struct {
 	memory     []byte
 	pc         uint16
-	call_stack stack.Stack[[2]byte]
+	call_stack stack.Stack[uint16]
 	registers  []byte
 	iReg       uint16
 	display    display.Display
@@ -86,11 +86,13 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 	case 0:
 		if fourthNibble == 0 { // CLS
 			system.display.ClearScreen()
-		} else {
-			// TODO: return from subrutine
+		} else { // RET
+			system.ret()
 		}
 	case 1: // JP addr
 		system.pc = last3Nibbles
+	case 2: // CALL addr
+		system.call(last3Nibbles)
 	case 6: // LD Vx, byte
 		system.registers[secondNibble] = last2Nibbles
 	case 7: // ADD Vx, byte
@@ -99,10 +101,28 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 		system.iReg = last3Nibbles
 	case 0xD: // DRW Vx, Vy, nibble
 		system.drw(secondNibble, thirdNibble, fourthNibble)
-
+	default:
+		{
+			fmt.Printf("Unknown instruction: %x\n", instruction)
+			os.Exit(1)
+		}
 	}
 
 	return false, nil
+}
+
+func (system *System) ret() {
+	old_pc, err := system.call_stack.Pop()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	system.pc = old_pc
+}
+
+func (system *System) call(addr uint16) {
+	system.call_stack.Push(system.pc)
+	system.pc = addr
 }
 
 func (system *System) drw(x_addr, y_addr, n byte) {
