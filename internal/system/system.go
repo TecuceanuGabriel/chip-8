@@ -103,6 +103,8 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 		system.registers[secondNibble] = last2Nibbles
 	case 7: // ADD Vx, byte
 		system.registers[secondNibble] += last2Nibbles
+	case 8:
+		system.decodeArithmetic(fourthNibble, secondNibble, thirdNibble)
 	case 9: // SNE Vx, Vy
 		system.skip_not_equal(secondNibble, thirdNibble)
 	case 0xA: // LD I, addr
@@ -117,6 +119,34 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (system *System) decodeArithmetic(instType, x_addr, y_addr byte) {
+	switch instType {
+	case 0: // LD Vx, Vy
+		system.registers[x_addr] = system.registers[y_addr]
+	case 1: // OR Vx, Vy
+		system.registers[x_addr] |= system.registers[y_addr]
+	case 2: // AND Vx, Vy
+		system.registers[x_addr] &= system.registers[y_addr]
+	case 3: // XOR Vx, Vy
+		system.registers[x_addr] ^= system.registers[y_addr]
+	case 4: // ADD Vx, Vy
+		system.add(x_addr, y_addr)
+	case 5: // SUB Vx, Vy
+		system.sub(x_addr, y_addr)
+	case 6: // SHR Vx {, Vy}
+		system.shr(x_addr)
+	case 7: // SUBN Vx, Vy
+		system.subn(x_addr, y_addr)
+	case 0xE: // AND Vx, Vy
+		system.shl(x_addr)
+	default:
+		{
+			fmt.Printf("Unknown arithmetic instruction: %x\n", instType)
+			os.Exit(1)
+		}
+	}
 }
 
 func (system *System) ret() {
@@ -155,6 +185,58 @@ func (system *System) skip_not_equal_im(x_addr, val byte) {
 	if system.registers[x_addr] != val {
 		system.pc += 2
 	}
+}
+
+func (system *System) add(x_addr, y_addr byte) {
+	result := uint16(system.registers[x_addr]) + uint16(system.registers[y_addr])
+	if result > 255 {
+		system.registers[0xF] = 1
+	} else {
+		system.registers[0xF] = 0
+	}
+	system.registers[x_addr] = byte(result)
+}
+
+func (system *System) sub(x_addr, y_addr byte) {
+	x := system.registers[x_addr]
+	y := system.registers[y_addr]
+	if x > y {
+		system.registers[0xF] = 1
+	} else {
+		system.registers[0xF] = 0
+	}
+	system.registers[x_addr] = x - y
+}
+
+func (system *System) subn(x_addr, y_addr byte) {
+	x := system.registers[x_addr]
+	y := system.registers[y_addr]
+	if y > x {
+		system.registers[0xF] = 1
+	} else {
+		system.registers[0xF] = 0
+	}
+	system.registers[x_addr] = y - x
+}
+
+func (system *System) shr(x_addr byte) {
+	x := system.registers[x_addr]
+	if x&1 == 1 {
+		system.registers[0xF] = 1
+	} else {
+		system.registers[0xF] = 0
+	}
+	system.registers[x_addr] >>= 1
+}
+
+func (system *System) shl(x_addr byte) {
+	x := system.registers[x_addr]
+	if (x>>7)&1 == 1 {
+		system.registers[0xF] = 1
+	} else {
+		system.registers[0xF] = 0
+	}
+	system.registers[x_addr] <<= 1
 }
 
 func (system *System) drw(x_addr, y_addr, n byte) {
