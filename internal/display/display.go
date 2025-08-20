@@ -65,6 +65,7 @@ func (d *Display) DrawSprite(sprite []byte, pos_x, pos_y, n byte) (erasing bool,
 		return erasing, err
 	}
 
+	// TODO: check only on resize
 	if tWidth < width || tHeight < height {
 		fmt.Println("Terminal window to small")
 		os.Exit(1)
