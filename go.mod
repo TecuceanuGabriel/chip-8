@@ -3,6 +3,7 @@ module github.com/TecuceanuGabriel/chip-8
 go 1.24.6
 
 require (
+	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/term v0.34.0
 )

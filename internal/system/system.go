@@ -5,6 +5,8 @@ import (
 	"math/rand/v2"
 	"os"
 
+	"github.com/eiannone/keyboard"
+
 	"github.com/TecuceanuGabriel/chip-8/internal/display"
 	"github.com/TecuceanuGabriel/chip-8/internal/stack"
 )
@@ -261,4 +263,18 @@ func (system *System) drw(x_addr, y_addr, n byte) {
 	if erasing {
 		system.registers[0xF] = 1
 	}
+}
+
+func (system *System) skp(x_addr byte) {
+}
+
+func GetPressedKey() rune {
+	char, _, err := keyboard.GetSingleKey()
+
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	return char
 }

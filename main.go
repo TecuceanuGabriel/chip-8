@@ -13,14 +13,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	system := system.CreateSystem()
+	sys := system.CreateSystem()
 
 	initTerminal()
 	defer restoreTerminal()
 
 	for {
-		instruction := system.Fetch()
-		exit, err := system.Decode(instruction)
+		instruction := sys.Fetch()
+		exit, err := sys.Decode(instruction)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
