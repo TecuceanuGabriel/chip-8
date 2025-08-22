@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"unicode"
 
 	"github.com/eiannone/keyboard"
 
@@ -34,6 +35,7 @@ const (
 	memorySize          = 4096
 	firstInstructionAdd = 0x200
 	fontStartAdd        = 0x50
+	keymapPath          = "./KEYMAP"
 )
 
 type System struct {
@@ -43,6 +45,8 @@ type System struct {
 	registers  []byte
 	iReg       uint16
 	display    display.Display
+
+	keymap map[byte]byte
 }
 
 func CreateSystem() (system *System) {
@@ -50,6 +54,7 @@ func CreateSystem() (system *System) {
 		memory:    make([]byte, memorySize),
 		pc:        firstInstructionAdd,
 		registers: make([]byte, 16),
+		keymap:    loadKeymap(),
 	}
 
 	copy(system.memory[fontStartAdd:], font)
@@ -58,13 +63,41 @@ func CreateSystem() (system *System) {
 
 	rom, err := os.ReadFile(rom_path)
 	if err != nil {
-		fmt.Printf("Failed to read rom: %v\n", rom_path)
+		fmt.Printf("Failed to load rom: %v\n", rom_path)
 		os.Exit(1)
 	}
 
 	copy(system.memory[firstInstructionAdd:], rom)
 
 	return system
+}
+
+func loadKeymap() (keymap map[byte]byte) {
+	file, err := os.ReadFile(keymapPath)
+	if err != nil {
+		fmt.Printf("Failed to load keymap: %v\n", keymapPath)
+	}
+
+	original_keys := []byte{
+		1, 2, 3, 0xC,
+		4, 5, 6, 0xD,
+		7, 8, 9, 0xE,
+		0xA, 0, 0xB, 0xF,
+	}
+
+	keymap = make(map[byte]byte, 16)
+	var i int
+	for _, b := range file {
+		if b == '\n' {
+			continue
+		}
+
+		key := byte(unicode.ToLower(rune(b)))
+		keymap[key] = original_keys[i]
+		i++
+	}
+
+	return keymap
 }
 
 func (system *System) Fetch() (instruction []byte) {
@@ -268,7 +301,7 @@ func (system *System) drw(x_addr, y_addr, n byte) {
 func (system *System) skp(x_addr byte) {
 }
 
-func GetPressedKey() rune {
+func (system *System) GetPressedKey() (rune, byte) {
 	char, _, err := keyboard.GetSingleKey()
 
 	if err != nil {
@@ -276,5 +309,5 @@ func GetPressedKey() rune {
 		os.Exit(1)
 	}
 
-	return char
+	return char, system.keymap[byte(char)]
 }
