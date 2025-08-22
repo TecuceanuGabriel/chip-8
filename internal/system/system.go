@@ -46,15 +46,23 @@ type System struct {
 	iReg       uint16
 	display    display.Display
 
-	keymap map[byte]byte
+	keymap  map[byte]byte
+	keyChan <-chan keyboard.KeyEvent
 }
 
 func CreateSystem() (system *System) {
+	keyChan, err := keyboard.GetKeys(10)
+	if err != nil {
+		fmt.Println("Failed to create keyboard channel", err)
+		os.Exit(1)
+	}
+
 	system = &System{
 		memory:    make([]byte, memorySize),
 		pc:        firstInstructionAdd,
 		registers: make([]byte, 16),
 		keymap:    loadKeymap(),
+		keyChan:   keyChan,
 	}
 
 	copy(system.memory[fontStartAdd:], font)
@@ -98,6 +106,10 @@ func loadKeymap() (keymap map[byte]byte) {
 	}
 
 	return keymap
+}
+
+func (system *System) Close() {
+	keyboard.Close()
 }
 
 func (system *System) Fetch() (instruction []byte) {
@@ -151,6 +163,14 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 		system.registers[secondNibble] = byte(rand.UintN(256)) & secondByte
 	case 0xD: // DRW Vx, Vy, nibble
 		system.drw(secondNibble, thirdNibble, fourthNibble)
+	case 0xE:
+		{
+			if fourthNibble == 0xE { // SKP Vx
+				system.skip_pressed(secondNibble)
+			} else { // SKNP Vx
+				system.skip_not_pressed(secondNibble)
+			}
+		}
 	default:
 		{
 			fmt.Printf("Unknown instruction: %x\n", instruction)
@@ -298,16 +318,19 @@ func (system *System) drw(x_addr, y_addr, n byte) {
 	}
 }
 
-func (system *System) skp(x_addr byte) {
+func (system *System) skip_pressed(x_addr byte) {
+
 }
 
-func (system *System) GetPressedKey() (rune, byte) {
-	char, _, err := keyboard.GetSingleKey()
+func (system *System) skip_not_pressed(x_addr byte) {
 
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+}
+
+func (system *System) GetPressedKey() (byte, bool) {
+	select {
+	case key := <-system.keyChan:
+		return system.keymap[byte(key.Rune)], true
+	default:
+		return 0, false
 	}
-
-	return char, system.keymap[byte(char)]
 }

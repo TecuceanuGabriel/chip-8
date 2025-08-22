@@ -14,6 +14,7 @@ func main() {
 	}
 
 	sys := system.CreateSystem()
+	defer sys.Close()
 
 	initTerminal()
 	defer restoreTerminal()
