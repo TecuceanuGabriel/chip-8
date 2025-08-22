@@ -287,6 +287,8 @@ func (system *System) decodeF(instType, x_addr byte) {
 		system.addToIReg(x_addr)
 	case 0x29: // LD F, Vx
 		system.setFontLoc(x_addr)
+	case 0x33: // LD B, Vx
+		system.storeBCD(x_addr)
 	default:
 		{
 			fmt.Printf("Unknown arithmetic instruction: %x\n", instType)
@@ -450,4 +452,11 @@ func (system *System) setFontLoc(x_addr byte) {
 	char := system.registers[x_addr] & 0x0F
 	pos := fontStartAddr + uint16(char*5)
 	system.iReg = pos
+}
+
+func (system *System) storeBCD(x_addr byte) {
+	num := system.registers[x_addr]
+	system.memory[system.iReg] = num / 100
+	system.memory[system.iReg+1] = (num % 100) / 10
+	system.memory[system.iReg+2] = num % 10
 }
