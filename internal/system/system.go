@@ -132,9 +132,10 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 
 	switch firstNibble {
 	case 0:
-		if fourthNibble == 0 { // CLS
+		switch secondByte {
+		case 0xE0: // CLS
 			system.display.ClearScreen()
-		} else { // RET
+		case 0xEE: // RET
 			system.ret()
 		}
 	case 1: // JP addr
@@ -165,12 +166,15 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 		system.drw(secondNibble, thirdNibble, fourthNibble)
 	case 0xE:
 		{
-			if fourthNibble == 0xE { // SKP Vx
+			switch secondByte {
+			case 0x9E: // SKP Vx
 				system.skip_pressed(secondNibble)
-			} else { // SKNP Vx
+			case 0xA1: // SKNP Vx
 				system.skip_not_pressed(secondNibble)
 			}
 		}
+	case 0xF:
+		system.decodeLDs(secondByte, secondNibble)
 	default:
 		{
 			fmt.Printf("Unknown instruction: %x\n", instruction)
@@ -201,6 +205,18 @@ func (system *System) decodeArithmetic(instType, x_addr, y_addr byte) {
 		system.subn(x_addr, y_addr)
 	case 0xE: // AND Vx, Vy
 		system.shl(x_addr)
+	default:
+		{
+			fmt.Printf("Unknown arithmetic instruction: %x\n", instType)
+			os.Exit(1)
+		}
+	}
+}
+
+func (system *System) decodeLDs(instType, x_addr byte) {
+	switch instType {
+	case 0x0A: // LD Vx, K
+		system.get_key(x_addr)
 	default:
 		{
 			fmt.Printf("Unknown arithmetic instruction: %x\n", instType)
@@ -329,6 +345,15 @@ func (system *System) skip_not_pressed(x_addr byte) {
 	key, hasInput := system.GetPressedKey()
 	if !hasInput || (hasInput && (key != system.memory[x_addr])) {
 		system.pc += 2
+	}
+}
+
+func (system *System) get_key(x_addr byte) {
+	key, hasInput := system.GetPressedKey()
+	if hasInput {
+		system.registers[x_addr] = key
+	} else {
+		system.pc -= 2 // block
 	}
 }
 
