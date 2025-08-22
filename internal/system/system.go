@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"syscall"
 	"time"
 	"unicode"
 
@@ -81,7 +82,17 @@ func CreateSystem() (system *System) {
 
 	copy(system.memory[firstInstructionAdd:], rom)
 
+	go system.listenForExit()
+
 	return system
+}
+
+func (system *System) listenForExit() {
+	for key := range system.keyChan {
+		if key.Key == keyboard.KeyCtrlC {
+			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+		}
+	}
 }
 
 func loadKeymap() (keymap map[byte]byte) {
@@ -167,7 +178,7 @@ func (system *System) Fetch() (instruction []byte) {
 	return instruction
 }
 
-func (system *System) Decode(instruction []byte) (bool, error) {
+func (system *System) Decode(instruction []byte) error {
 	firstByte := instruction[0]
 	secondByte := instruction[1]
 
@@ -231,7 +242,7 @@ func (system *System) Decode(instruction []byte) (bool, error) {
 		}
 	}
 
-	return false, nil
+	return nil
 }
 
 func (system *System) decodeArithmetic(instType, x_addr, y_addr byte) {

@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/TecuceanuGabriel/chip-8/internal/system"
 )
@@ -19,18 +21,29 @@ func main() {
 	initTerminal()
 	defer restoreTerminal()
 
-	for {
-		instruction := sys.Fetch()
-		exit, err := sys.Decode(instruction)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		if exit {
-			break
-		}
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-		sys.HandleTimers()
+	running := true
+	for running {
+		select {
+		case <-sigChan:
+			{
+				running = false
+			}
+		default:
+			{
+				instruction := sys.Fetch()
+
+				err := sys.Decode(instruction)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+
+				sys.HandleTimers()
+			}
+		}
 	}
 }
 
