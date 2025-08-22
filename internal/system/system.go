@@ -34,10 +34,10 @@ var font = []byte{
 }
 
 const (
-	memorySize          = 4096
-	firstInstructionAdd = 0x200
-	fontStartAdd        = 0x50
-	keymapPath          = "./KEYMAP"
+	memorySize                 = 4096
+	firstInstructionAdd uint16 = 0x200
+	fontStartAddr       uint16 = 0x50
+	keymapPath                 = "./KEYMAP"
 )
 
 type System struct {
@@ -70,7 +70,7 @@ func CreateSystem() (system *System) {
 		keyChan:   keyChan,
 	}
 
-	copy(system.memory[fontStartAdd:], font)
+	copy(system.memory[fontStartAddr:], font)
 
 	rom_path := os.Args[1]
 
@@ -285,6 +285,8 @@ func (system *System) decodeF(instType, x_addr byte) {
 		system.soundTimer = system.registers[x_addr]
 	case 0x1E: // ADD I, Vx
 		system.addToIReg(x_addr)
+	case 0x29: // LD F, Vx
+		system.setFontLoc(x_addr)
 	default:
 		{
 			fmt.Printf("Unknown arithmetic instruction: %x\n", instType)
@@ -442,4 +444,10 @@ func (system *System) addToIReg(x_addr byte) {
 		system.registers[0xF] = 0
 	}
 	system.iReg = result
+}
+
+func (system *System) setFontLoc(x_addr byte) {
+	char := system.registers[x_addr] & 0x0F
+	pos := fontStartAddr + uint16(char*5)
+	system.iReg = pos
 }
