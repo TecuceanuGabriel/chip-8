@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"time"
 	"unicode"
 
 	"github.com/eiannone/keyboard"
@@ -48,6 +49,9 @@ type System struct {
 
 	keymap  map[byte]byte
 	keyChan <-chan keyboard.KeyEvent
+
+	soundTimer byte
+	delayTimer byte
 }
 
 func CreateSystem() (system *System) {
@@ -110,6 +114,51 @@ func loadKeymap() (keymap map[byte]byte) {
 
 func (system *System) Close() {
 	keyboard.Close()
+}
+
+func (system *System) HandleTimers() {
+	go system.handleDelayTimer()
+	go system.handleSoundTimer()
+}
+
+func (system *System) handleDelayTimer() {
+	if system.delayTimer == 0 {
+		return
+	}
+
+	executeAt60Hz(func() bool {
+		system.delayTimer--
+		return system.delayTimer == 0
+	})
+}
+
+func (system *System) handleSoundTimer() {
+	if system.soundTimer == 0 {
+		return
+	}
+
+	executeAt60Hz(func() bool {
+		system.soundTimer--
+
+		if system.soundTimer != 0 {
+			fmt.Print("\a") // beep
+			return false
+		}
+
+		return true
+	})
+}
+
+func executeAt60Hz(action func() bool) {
+	ticker := time.NewTicker(time.Second / 60)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		stop := action()
+		if stop {
+			break
+		}
+	}
 }
 
 func (system *System) Fetch() (instruction []byte) {

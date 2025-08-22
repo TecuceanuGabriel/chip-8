@@ -29,6 +29,8 @@ func main() {
 		if exit {
 			break
 		}
+
+		sys.HandleTimers()
 	}
 }
 
