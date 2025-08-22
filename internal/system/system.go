@@ -319,11 +319,17 @@ func (system *System) drw(x_addr, y_addr, n byte) {
 }
 
 func (system *System) skip_pressed(x_addr byte) {
-
+	key, hasInput := system.GetPressedKey()
+	if hasInput && key == system.memory[x_addr] {
+		system.pc += 2
+	}
 }
 
 func (system *System) skip_not_pressed(x_addr byte) {
-
+	key, hasInput := system.GetPressedKey()
+	if !hasInput || (hasInput && (key != system.memory[x_addr])) {
+		system.pc += 2
+	}
 }
 
 func (system *System) GetPressedKey() (byte, bool) {
