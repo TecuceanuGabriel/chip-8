@@ -275,8 +275,14 @@ func (system *System) decodeArithmetic(instType, x_addr, y_addr byte) {
 
 func (system *System) decodeLDs(instType, x_addr byte) {
 	switch instType {
+	case 0x07: // LD Vx, DT
+		system.registers[x_addr] = system.delayTimer
 	case 0x0A: // LD Vx, K
 		system.get_key(x_addr)
+	case 0x15: // LD DT, Vx
+		system.delayTimer = system.registers[x_addr]
+	case 0x18: // LD ST, Vx
+		system.soundTimer = system.registers[x_addr]
 	default:
 		{
 			fmt.Printf("Unknown arithmetic instruction: %x\n", instType)
