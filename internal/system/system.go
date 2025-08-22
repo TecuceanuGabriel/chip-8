@@ -234,7 +234,7 @@ func (system *System) Decode(instruction []byte) error {
 			}
 		}
 	case 0xF:
-		system.decodeLDs(secondByte, secondNibble)
+		system.decodeF(secondByte, secondNibble)
 	default:
 		{
 			fmt.Printf("Unknown instruction: %x\n", instruction)
@@ -273,7 +273,7 @@ func (system *System) decodeArithmetic(instType, x_addr, y_addr byte) {
 	}
 }
 
-func (system *System) decodeLDs(instType, x_addr byte) {
+func (system *System) decodeF(instType, x_addr byte) {
 	switch instType {
 	case 0x07: // LD Vx, DT
 		system.registers[x_addr] = system.delayTimer
@@ -283,6 +283,8 @@ func (system *System) decodeLDs(instType, x_addr byte) {
 		system.delayTimer = system.registers[x_addr]
 	case 0x18: // LD ST, Vx
 		system.soundTimer = system.registers[x_addr]
+	case 0x1E: // ADD I, Vx
+		system.addToIReg(x_addr)
 	default:
 		{
 			fmt.Printf("Unknown arithmetic instruction: %x\n", instType)
@@ -430,4 +432,14 @@ func (system *System) GetPressedKey() (byte, bool) {
 	default:
 		return 0, false
 	}
+}
+
+func (system *System) addToIReg(x_addr byte) {
+	result := system.iReg + uint16(system.registers[x_addr])
+	if result > 0x0FFF { // only left-most 12 bits are used
+		system.registers[0xF] = 1
+	} else {
+		system.registers[0xF] = 0
+	}
+	system.iReg = result
 }
