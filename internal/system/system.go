@@ -37,7 +37,13 @@ const (
 	memorySize                 = 4096
 	firstInstructionAdd uint16 = 0x200
 	fontStartAddr       uint16 = 0x50
-	keymapPath                 = "./KEYMAP"
+)
+
+const keymapPath = "./KEYMAP"
+
+const (
+	keyNone = iota
+	keyPressed
 )
 
 type System struct {
@@ -50,6 +56,9 @@ type System struct {
 
 	keymap  map[byte]byte
 	keyChan <-chan keyboard.KeyEvent
+
+	keyWaitState   int
+	lastPressedKey byte
 
 	soundTimer byte
 	delayTimer byte
@@ -442,11 +451,22 @@ func (system *System) skip_not_pressed(x_addr byte) {
 }
 
 func (system *System) get_key(x_addr byte) {
-	key, hasInput := system.GetPressedKey()
-	if hasInput {
-		system.registers[x_addr] = key
-	} else {
+	switch system.keyWaitState {
+	case keyNone:
+		key, pressed := system.GetPressedKey()
+		if pressed {
+			system.keyWaitState = keyPressed
+			system.lastPressedKey = key
+		}
 		system.pc -= 2 // block
+	case keyPressed:
+		key, pressed := system.GetPressedKey()
+		if !pressed || key != system.lastPressedKey {
+			system.registers[x_addr] = system.lastPressedKey
+			system.keyWaitState = keyNone
+		} else {
+			system.pc -= 2
+		}
 	}
 }
 
