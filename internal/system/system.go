@@ -62,12 +62,15 @@ func CreateSystem() (system *System) {
 		os.Exit(1)
 	}
 
+	exitChan := make(chan keyboard.KeyEvent, 10)
+	inputChan := make(chan keyboard.KeyEvent, 10)
+
 	system = &System{
 		memory:    make([]byte, memorySize),
 		pc:        firstInstructionAdd,
 		registers: make([]byte, 16),
 		keymap:    loadKeymap(),
-		keyChan:   keyChan,
+		keyChan:   inputChan,
 	}
 
 	copy(system.memory[fontStartAddr:], font)
@@ -82,16 +85,30 @@ func CreateSystem() (system *System) {
 
 	copy(system.memory[firstInstructionAdd:], rom)
 
-	go system.listenForExit()
+	go func() {
+		for key := range keyChan {
+			if key.Key == keyboard.KeyCtrlC {
+				select {
+				case exitChan <- key:
+				default:
+				}
+			}
+
+			select {
+			case inputChan <- key:
+			default:
+			}
+		}
+	}()
+
+	go listenForExit(exitChan)
 
 	return system
 }
 
-func (system *System) listenForExit() {
-	for key := range system.keyChan {
-		if key.Key == keyboard.KeyCtrlC {
-			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
-		}
+func listenForExit(exitChan <-chan keyboard.KeyEvent) {
+	for range exitChan {
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 	}
 }
 
