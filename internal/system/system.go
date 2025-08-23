@@ -370,7 +370,7 @@ func (system *System) sub(x_addr, y_addr byte) {
 	x := system.registers[x_addr]
 	y := system.registers[y_addr]
 	system.registers[x_addr] = x - y
-	if x > y {
+	if x >= y {
 		system.registers[0xF] = 1
 	} else {
 		system.registers[0xF] = 0
@@ -381,7 +381,7 @@ func (system *System) subn(x_addr, y_addr byte) {
 	x := system.registers[x_addr]
 	y := system.registers[y_addr]
 	system.registers[x_addr] = y - x
-	if y > x {
+	if y >= x {
 		system.registers[0xF] = 1
 	} else {
 		system.registers[0xF] = 0
