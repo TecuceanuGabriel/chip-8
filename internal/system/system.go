@@ -466,20 +466,18 @@ func (system *System) storeBCD(x_addr byte) {
 }
 
 // TODO: make iReg inc configurable for compat reasons
-func (system *System) storeReg(x_addr byte) {
-	limit := uint16(system.registers[x_addr])
+func (system *System) storeReg(x byte) {
 	base := system.iReg
-	var idx uint16
-	for idx = 0; idx <= limit; idx++ {
-		system.memory[base+idx] = system.registers[idx]
+	var idx byte
+	for idx = 0; idx <= x; idx++ {
+		system.memory[base+uint16(idx)] = system.registers[idx]
 	}
 }
 
-func (system *System) loadReg(x_addr byte) {
-	limit := uint16(system.registers[x_addr])
+func (system *System) loadReg(x byte) {
 	base := system.iReg
-	var idx uint16
-	for idx = 0; idx <= limit; idx++ {
-		system.registers[idx] = system.memory[base+idx]
+	var idx byte
+	for idx = 0; idx <= x; idx++ {
+		system.registers[idx] = system.memory[base+uint16(idx)]
 	}
 }
