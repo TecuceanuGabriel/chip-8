@@ -358,55 +358,55 @@ func (system *System) skip_not_equal_im(x_addr, val byte) {
 
 func (system *System) add(x_addr, y_addr byte) {
 	result := uint16(system.registers[x_addr]) + uint16(system.registers[y_addr])
+	system.registers[x_addr] = byte(result)
 	if result > 255 {
 		system.registers[0xF] = 1
 	} else {
 		system.registers[0xF] = 0
 	}
-	system.registers[x_addr] = byte(result)
 }
 
 func (system *System) sub(x_addr, y_addr byte) {
 	x := system.registers[x_addr]
 	y := system.registers[y_addr]
+	system.registers[x_addr] = x - y
 	if x > y {
 		system.registers[0xF] = 1
 	} else {
 		system.registers[0xF] = 0
 	}
-	system.registers[x_addr] = x - y
 }
 
 func (system *System) subn(x_addr, y_addr byte) {
 	x := system.registers[x_addr]
 	y := system.registers[y_addr]
+	system.registers[x_addr] = y - x
 	if y > x {
 		system.registers[0xF] = 1
 	} else {
 		system.registers[0xF] = 0
 	}
-	system.registers[x_addr] = y - x
 }
 
 // TODO: make shifts configurable (use Vy or not)
 func (system *System) shr(x_addr byte) {
 	x := system.registers[x_addr]
+	system.registers[x_addr] >>= 1
 	if x&1 == 1 {
 		system.registers[0xF] = 1
 	} else {
 		system.registers[0xF] = 0
 	}
-	system.registers[x_addr] >>= 1
 }
 
 func (system *System) shl(x_addr byte) {
 	x := system.registers[x_addr]
+	system.registers[x_addr] <<= 1
 	if (x>>7)&1 == 1 {
 		system.registers[0xF] = 1
 	} else {
 		system.registers[0xF] = 0
 	}
-	system.registers[x_addr] <<= 1
 }
 
 func (system *System) drw(x_addr, y_addr, n byte) {
@@ -461,12 +461,12 @@ func (system *System) GetPressedKey() (byte, bool) {
 
 func (system *System) addToIReg(x_addr byte) {
 	result := system.iReg + uint16(system.registers[x_addr])
+	system.iReg = result
 	if result > 0x0FFF { // only left-most 12 bits are used
 		system.registers[0xF] = 1
 	} else {
 		system.registers[0xF] = 0
 	}
-	system.iReg = result
 }
 
 func (system *System) setFontLoc(x_addr byte) {
