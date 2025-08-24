@@ -11,8 +11,8 @@ type Timer struct {
 	mu     sync.Mutex
 }
 
-func NewTimer() *Timer {
-	timer := &Timer{}
+func NewTimer(action func()) *Timer {
+	timer := &Timer{action: action}
 	go timer.run()
 	return timer
 }

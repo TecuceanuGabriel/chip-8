@@ -5,13 +5,13 @@ import (
 	"math/rand/v2"
 	"os"
 	"syscall"
-	"time"
 	"unicode"
 
 	"github.com/eiannone/keyboard"
 
 	"github.com/TecuceanuGabriel/chip-8/internal/display"
 	"github.com/TecuceanuGabriel/chip-8/internal/stack"
+	"github.com/TecuceanuGabriel/chip-8/internal/timer"
 )
 
 var font = []byte{
@@ -60,8 +60,8 @@ type System struct {
 	keyWaitState   int
 	lastPressedKey byte
 
-	soundTimer byte
-	delayTimer byte
+	soundTimer timer.Timer
+	delayTimer timer.Timer
 }
 
 func CreateSystem() (system *System) {
@@ -75,11 +75,13 @@ func CreateSystem() (system *System) {
 	inputChan := make(chan keyboard.KeyEvent, 10)
 
 	system = &System{
-		memory:    make([]byte, memorySize),
-		pc:        firstInstructionAdd,
-		registers: make([]byte, 16),
-		keymap:    loadKeymap(),
-		keyChan:   inputChan,
+		memory:     make([]byte, memorySize),
+		pc:         firstInstructionAdd,
+		registers:  make([]byte, 16),
+		keymap:     loadKeymap(),
+		keyChan:    inputChan,
+		delayTimer: *timer.NewTimer(nil),
+		soundTimer: *timer.NewTimer(beep),
 	}
 
 	copy(system.memory[fontStartAddr:], font)
@@ -149,53 +151,12 @@ func loadKeymap() (keymap map[byte]byte) {
 	return keymap
 }
 
+func beep() {
+	fmt.Print("\a")
+}
+
 func (system *System) Close() {
 	keyboard.Close()
-}
-
-func (system *System) HandleTimers() {
-	go system.handleDelayTimer()
-	go system.handleSoundTimer()
-}
-
-func (system *System) handleDelayTimer() {
-	if system.delayTimer == 0 {
-		return
-	}
-
-	executeAt60Hz(func() bool {
-		system.delayTimer--
-		return system.delayTimer == 0
-	})
-}
-
-func (system *System) handleSoundTimer() {
-	if system.soundTimer == 0 {
-		return
-	}
-
-	executeAt60Hz(func() bool {
-		system.soundTimer--
-
-		if system.soundTimer != 0 {
-			fmt.Print("\a") // beep
-			return false
-		}
-
-		return true
-	})
-}
-
-func executeAt60Hz(action func() bool) {
-	ticker := time.NewTicker(time.Second / 60)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		stop := action()
-		if stop {
-			break
-		}
-	}
 }
 
 func (system *System) Fetch() (instruction []byte) {
@@ -302,13 +263,13 @@ func (system *System) decodeArithmetic(instType, x_addr, y_addr byte) {
 func (system *System) decodeF(instType, x_addr byte) {
 	switch instType {
 	case 0x07: // LD Vx, DT
-		system.registers[x_addr] = system.delayTimer
+		system.registers[x_addr] = system.delayTimer.Get()
 	case 0x0A: // LD Vx, K
 		system.get_key(x_addr)
 	case 0x15: // LD DT, Vx
-		system.delayTimer = system.registers[x_addr]
+		system.delayTimer.Set(system.registers[x_addr])
 	case 0x18: // LD ST, Vx
-		system.soundTimer = system.registers[x_addr]
+		system.soundTimer.Set(system.registers[x_addr])
 	case 0x1E: // ADD I, Vx
 		system.addToIReg(x_addr)
 	case 0x29: // LD F, Vx
