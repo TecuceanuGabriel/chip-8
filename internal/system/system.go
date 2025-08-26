@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"github.com/eiannone/keyboard"
+	"github.com/faiface/pixel/pixelgl"
 
 	"github.com/TecuceanuGabriel/chip-8/internal/display"
 	"github.com/TecuceanuGabriel/chip-8/internal/stack"
@@ -51,7 +52,8 @@ type System struct {
 
 	display display.Display
 
-	keymap map[byte]byte
+	keymap   map[byte]byte
+	keyState [16]bool
 
 	soundTimer timer.Timer
 	delayTimer timer.Timer
@@ -94,6 +96,8 @@ func (system *System) Run() {
 	win := system.display.GetWindow()
 
 	for !win.Closed() {
+		system.handleInput()
+
 		for range nrInstPerFrame {
 			instruction := system.Fetch()
 
@@ -105,6 +109,17 @@ func (system *System) Run() {
 		}
 
 		win.Update()
+	}
+}
+
+func (system *System) handleInput() {
+	win := system.display.GetWindow()
+	for key := range system.keymap {
+		if win.Pressed(pixelgl.Button(key)) {
+			system.keyState[system.keymap[key]] = true
+		} else {
+			system.keyState[system.keymap[key]] = false
+		}
 	}
 }
 
@@ -128,7 +143,7 @@ func loadKeymap() (keymap map[byte]byte) {
 			continue
 		}
 
-		key := byte(unicode.ToLower(rune(b)))
+		key := byte(unicode.ToUpper(rune(b)))
 		keymap[key] = original_keys[i]
 		i++
 	}
@@ -137,7 +152,7 @@ func loadKeymap() (keymap map[byte]byte) {
 }
 
 func beep() {
-	fmt.Print("\a")
+	//TODO:
 }
 
 func (system *System) Close() {
@@ -383,25 +398,32 @@ func (system *System) drw(x_addr, y_addr, n byte) {
 }
 
 func (system *System) skip_pressed(x_addr byte) {
-	key, hasInput := system.GetPressedKey()
-	if hasInput && key == system.registers[x_addr] {
+	if system.keyState[system.registers[x_addr]] {
 		system.pc += 2
 	}
 }
 
 func (system *System) skip_not_pressed(x_addr byte) {
-	key, hasInput := system.GetPressedKey()
-	if !hasInput || (hasInput && (key != system.registers[x_addr])) {
+	if !system.keyState[system.registers[x_addr]] {
 		system.pc += 2
 	}
 }
 
 func (system *System) get_key(x_addr byte) {
-	// TODO:
+	key, pressed := system.getPressedKey()
+	if !pressed {
+		system.pc -= 2
+		return
+	}
+	system.registers[x_addr] = key
 }
 
-func (system *System) GetPressedKey() (byte, bool) {
-	//TODO:
+func (system *System) getPressedKey() (byte, bool) {
+	for key, pressed := range system.keyState {
+		if pressed {
+			return byte(key), true
+		}
+	}
 	return 0, false
 }
 
