@@ -55,8 +55,10 @@ type System struct {
 
 	display display.Display
 
-	keymap   map[byte]byte
-	keyState [16]bool
+	keymap            map[byte]byte
+	keyState          [16]bool
+	waitingForRelease bool
+	lastPressedKey    byte
 
 	soundTimer byte
 	delayTimer byte
@@ -440,11 +442,21 @@ func (system *System) skip_not_pressed(x_addr byte) {
 
 func (system *System) get_key(x_addr byte) {
 	key, pressed := system.getPressedKey()
-	if !pressed {
-		system.pc -= 2
-		return
+
+	if system.waitingForRelease {
+		if !pressed || key != system.lastPressedKey {
+			system.waitingForRelease = false
+			system.registers[x_addr] = key
+			return
+		}
+	} else {
+		if pressed {
+			system.waitingForRelease = true
+			system.lastPressedKey = key
+		}
 	}
-	system.registers[x_addr] = key
+
+	system.pc -= 2
 }
 
 func (system *System) getPressedKey() (byte, bool) {
