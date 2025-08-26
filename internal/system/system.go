@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"time"
 	"unicode"
 
 	"github.com/eiannone/keyboard"
@@ -41,7 +42,10 @@ const (
 
 const keymapPath = "./KEYMAP"
 
-const nrInstPerFrame = 20
+const (
+	targetFPS      = 60
+	nrInstPerFrame = 20
+)
 
 type System struct {
 	memory     []byte
@@ -55,8 +59,8 @@ type System struct {
 	keymap   map[byte]byte
 	keyState [16]bool
 
-	soundTimer timer.Timer
-	delayTimer timer.Timer
+	soundTimer byte
+	delayTimer byte
 }
 
 func CreateSystem() (system *System) {
@@ -65,8 +69,6 @@ func CreateSystem() (system *System) {
 		pc:         firstInstructionAdd,
 		registers:  make([]byte, 16),
 		keymap:     loadKeymap(),
-		delayTimer: *timer.NewTimer(nil),
-		soundTimer: *timer.NewTimer(beep),
 	}
 
 	copy(system.memory[fontStartAddr:], font)
@@ -95,20 +97,26 @@ func (system *System) Run() {
 
 	win := system.display.GetWindow()
 
+	ticker := time.NewTicker(time.Second / targetFPS)
+	defer ticker.Stop()
+
 	for !win.Closed() {
-		system.handleInput()
+		for range ticker.C {
+			system.handleInput()
 
-		for range nrInstPerFrame {
-			instruction := system.Fetch()
+			for range nrInstPerFrame {
+				instruction := system.Fetch()
 
-			err := system.Decode(instruction)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+				err := system.Decode(instruction)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
 			}
-		}
 
-		win.Update()
+			system.updateTimers()
+			win.Update()
+		}
 	}
 }
 
@@ -121,6 +129,15 @@ func (system *System) handleInput() {
 			system.keyState[system.keymap[key]] = false
 		}
 	}
+}
+
+func (system *System) updateTimers() {
+
+}
+
+
+func beep() {
+	//TODO:
 }
 
 func loadKeymap() (keymap map[byte]byte) {
@@ -149,10 +166,6 @@ func loadKeymap() (keymap map[byte]byte) {
 	}
 
 	return keymap
-}
-
-func beep() {
-	//TODO:
 }
 
 func (system *System) Close() {
