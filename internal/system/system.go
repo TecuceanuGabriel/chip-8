@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
-	"syscall"
 	"unicode"
 
 	"github.com/eiannone/keyboard"
@@ -52,34 +51,21 @@ type System struct {
 	call_stack stack.Stack[uint16]
 	registers  []byte
 	iReg       uint16
-	display    display.Display
 
-	keymap  map[byte]byte
-	keyChan <-chan keyboard.KeyEvent
+	display display.Display
 
-	keyWaitState   int
-	lastPressedKey byte
+	keymap map[byte]byte
 
 	soundTimer timer.Timer
 	delayTimer timer.Timer
 }
 
 func CreateSystem() (system *System) {
-	keyChan, err := keyboard.GetKeys(10)
-	if err != nil {
-		fmt.Println("Failed to create keyboard channel", err)
-		os.Exit(1)
-	}
-
-	exitChan := make(chan keyboard.KeyEvent, 10)
-	inputChan := make(chan keyboard.KeyEvent, 10)
-
 	system = &System{
 		memory:     make([]byte, memorySize),
 		pc:         firstInstructionAdd,
 		registers:  make([]byte, 16),
 		keymap:     loadKeymap(),
-		keyChan:    inputChan,
 		delayTimer: *timer.NewTimer(nil),
 		soundTimer: *timer.NewTimer(beep),
 	}
@@ -96,30 +82,30 @@ func CreateSystem() (system *System) {
 
 	copy(system.memory[firstInstructionAdd:], rom)
 
-	go func() {
-		for key := range keyChan {
-			if key.Key == keyboard.KeyCtrlC {
-				select {
-				case exitChan <- key:
-				default:
-				}
-			}
-
-			select {
-			case inputChan <- key:
-			default:
-			}
-		}
-	}()
-
-	go listenForExit(exitChan)
-
 	return system
 }
 
-func listenForExit(exitChan <-chan keyboard.KeyEvent) {
-	for range exitChan {
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+func (system *System) Run() {
+	display, err := display.NewDisplay()
+	if err != nil {
+		fmt.Println("Failed to create display")
+		os.Exit(1)
+	}
+
+	system.display = *display
+
+	win := system.display.GetWindow()
+
+	for !win.Closed() {
+		instruction := system.Fetch()
+
+		err := system.Decode(instruction)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		win.Update()
 	}
 }
 
@@ -412,32 +398,12 @@ func (system *System) skip_not_pressed(x_addr byte) {
 }
 
 func (system *System) get_key(x_addr byte) {
-	switch system.keyWaitState {
-	case keyNone:
-		key, pressed := system.GetPressedKey()
-		if pressed {
-			system.keyWaitState = keyPressed
-			system.lastPressedKey = key
-		}
-		system.pc -= 2 // block
-	case keyPressed:
-		key, pressed := system.GetPressedKey()
-		if !pressed || key != system.lastPressedKey {
-			system.registers[x_addr] = system.lastPressedKey
-			system.keyWaitState = keyNone
-		} else {
-			system.pc -= 2
-		}
-	}
+	// TODO:
 }
 
 func (system *System) GetPressedKey() (byte, bool) {
-	select {
-	case key := <-system.keyChan:
-		return system.keymap[byte(key.Rune)], true
-	default:
-		return 0, false
-	}
+	//TODO:
+	return 0, false
 }
 
 func (system *System) addToIReg(x_addr byte) {
