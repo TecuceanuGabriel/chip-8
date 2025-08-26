@@ -40,10 +40,7 @@ const (
 
 const keymapPath = "./KEYMAP"
 
-const (
-	keyNone = iota
-	keyPressed
-)
+const nrInstPerFrame = 20
 
 type System struct {
 	memory     []byte
@@ -97,12 +94,14 @@ func (system *System) Run() {
 	win := system.display.GetWindow()
 
 	for !win.Closed() {
-		instruction := system.Fetch()
+		for range nrInstPerFrame {
+			instruction := system.Fetch()
 
-		err := system.Decode(instruction)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			err := system.Decode(instruction)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		}
 
 		win.Update()
