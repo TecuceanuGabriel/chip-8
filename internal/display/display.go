@@ -55,12 +55,19 @@ func (d *Display) DrawSprite(sprite []byte, pos_x, pos_y, n byte) (erasing bool,
 	pos_y = pos_y % height
 
 	for i := range n {
+		if pos_y+i > height {
+			break
+		}
+
 		line := sprite[i]
 		for j := range byte(8) {
+			if pos_x+j > width {
+				break
+			}
+
 			fill := (line>>(7-j))&1 == 1
-			e := d.drawCell(fill, pos_x+j, pos_y+i)
-			if e {
-				erasing = e
+			if d.drawCell(fill, pos_x+j, pos_y+i) {
+				erasing = true
 			}
 		}
 	}
