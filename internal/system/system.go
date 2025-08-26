@@ -12,7 +12,6 @@ import (
 
 	"github.com/TecuceanuGabriel/chip-8/internal/display"
 	"github.com/TecuceanuGabriel/chip-8/internal/stack"
-	"github.com/TecuceanuGabriel/chip-8/internal/timer"
 )
 
 var font = []byte{
@@ -65,10 +64,10 @@ type System struct {
 
 func CreateSystem() (system *System) {
 	system = &System{
-		memory:     make([]byte, memorySize),
-		pc:         firstInstructionAdd,
-		registers:  make([]byte, 16),
-		keymap:     loadKeymap(),
+		memory:    make([]byte, memorySize),
+		pc:        firstInstructionAdd,
+		registers: make([]byte, 16),
+		keymap:    loadKeymap(),
 	}
 
 	copy(system.memory[fontStartAddr:], font)
@@ -132,9 +131,15 @@ func (system *System) handleInput() {
 }
 
 func (system *System) updateTimers() {
+	if system.delayTimer > 0 {
+		system.delayTimer--
+	}
 
+	if system.soundTimer > 0 {
+		system.soundTimer--
+		beep()
+	}
 }
-
 
 func beep() {
 	//TODO:
@@ -276,13 +281,13 @@ func (system *System) decodeArithmetic(instType, x_addr, y_addr byte) {
 func (system *System) decodeF(instType, x_addr byte) {
 	switch instType {
 	case 0x07: // LD Vx, DT
-		system.registers[x_addr] = system.delayTimer.Get()
+		system.registers[x_addr] = system.delayTimer
 	case 0x0A: // LD Vx, K
 		system.get_key(x_addr)
 	case 0x15: // LD DT, Vx
-		system.delayTimer.Set(system.registers[x_addr])
+		system.delayTimer = system.registers[x_addr]
 	case 0x18: // LD ST, Vx
-		system.soundTimer.Set(system.registers[x_addr])
+		system.soundTimer = system.registers[x_addr]
 	case 0x1E: // ADD I, Vx
 		system.addToIReg(x_addr)
 	case 0x29: // LD F, Vx
