@@ -99,9 +99,13 @@ func (system *System) Run() {
 	ticker := time.NewTicker(time.Second / targetFPS)
 	defer ticker.Stop()
 
-	for !win.Closed() {
+	exit := false
+	for !win.Closed() && !exit {
 		for range ticker.C {
-			system.handleInput()
+			if system.handleInput() {
+				exit = true
+				break
+			}
 
 			for range nrInstPerFrame {
 				instruction := system.Fetch()
@@ -119,8 +123,13 @@ func (system *System) Run() {
 	}
 }
 
-func (system *System) handleInput() {
+func (system *System) handleInput() bool {
 	win := system.display.GetWindow()
+
+	if win.Pressed(pixelgl.KeyEscape) {
+		return true
+	}
+
 	for key := range system.keymap {
 		if win.Pressed(pixelgl.Button(key)) {
 			system.keyState[system.keymap[key]] = true
@@ -128,6 +137,8 @@ func (system *System) handleInput() {
 			system.keyState[system.keymap[key]] = false
 		}
 	}
+
+	return false
 }
 
 func (system *System) updateTimers() {
