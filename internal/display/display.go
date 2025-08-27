@@ -1,89 +1,116 @@
 package display
 
 import (
-	"fmt"
-	"os"
-
-	"golang.org/x/term"
+	"github.com/gopxl/pixel"
+	"github.com/gopxl/pixel/imdraw"
+	"github.com/gopxl/pixel/pixelgl"
+	"golang.org/x/image/colornames"
 )
 
 const (
 	width  = 64
 	height = 32
+	scale  = 20
 )
 
 type Display struct {
 	pixels [width * height]bool
+	win    *pixelgl.Window
 }
 
-func GetTerminalSize() (width, height int, err error) {
-	fd := int(os.Stdout.Fd())
-	return term.GetSize(fd)
+func NewDisplay() (*Display, error) {
+	cfg := pixelgl.WindowConfig{
+		Title:  "CHIPY",
+		Bounds: pixel.R(0, 0, width*scale, height*scale),
+		VSync:  true,
+	}
+
+	win, err := pixelgl.NewWindow(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Display{
+		win: win,
+	}, nil
 }
 
 func (d *Display) ClearScreen() {
-	fmt.Print("\x1b[2J\x1b[H")
-	for i := range height {
-		for j := range width {
-			d.pixels[j+i*width] = false
-		}
+	d.win.Clear(colornames.Black)
+	for idx := range d.pixels {
+		d.pixels[idx] = false
 	}
 }
 
-func (d *Display) DrawSprite(sprite []byte, pos_x, pos_y, n byte) (erasing bool, err error) {
-	erasing = false
-
-	tWidth, tHeight, err := GetTerminalSize()
-	if err != nil {
-		fmt.Println(err)
-		return erasing, err
-	}
-
-	// TODO: check only on resize
-	if tWidth < width || tHeight < height {
-		fmt.Println("Terminal window to small")
-		os.Exit(1)
-	}
+func (d *Display) DrawSprite(sprite []byte, pos_x, pos_y, n byte) (collision bool, err error) {
+	collision = false
 
 	// wrap coordinates
 	pos_x = pos_x % width
 	pos_y = pos_y % height
 
 	for i := range n {
+		if pos_y+i >= height {
+			break
+		}
+
 		line := sprite[i]
 		for j := range byte(8) {
+			if pos_x+j >= width {
+				break
+			}
+
 			fill := (line>>(7-j))&1 == 1
-			e := d.drawCell(fill, pos_x+j, pos_y+i)
-			if e {
-				erasing = e
+
+			if d.setCell(fill, pos_x+j, pos_y+i) {
+				collision = true
 			}
 		}
 	}
 
-	return erasing, nil
+	d.render()
+	return collision, nil
 }
 
-func (d *Display) drawCell(fill bool, pos_x, pos_y byte) (erasing bool) {
-	erasing = false
-	idx := pos_x + pos_y*width
+func (d *Display) setCell(fill bool, x, y byte) (collision bool) {
+	collision = false
+	idx := getIdx(x, y)
 
-	if fill == true {
-		var color string
-		if d.pixels[idx] == true {
-			d.pixels[idx] = false
-			color = "255"
-			erasing = true
-		} else {
-			d.pixels[idx] = true
-			color = "0"
+	if fill {
+		if d.pixels[idx] {
+			collision = true
 		}
-
-		// TODO: use one print
-		fmt.Printf("\x1b[%v;%vH", pos_y+1, pos_x+1)
-		fmt.Printf("\x1b[48;5;%vm", color)
-		fmt.Print("█")
-		fmt.Print("\x1b[0m") // reset
+		d.pixels[idx] = !d.pixels[idx]
 	}
 
-	return erasing
+	return collision
+}
+
+func (d *Display) render() {
+	d.win.Clear(colornames.Black)
+
+	imd := imdraw.New(nil)
+	imd.Color = colornames.White
+
+	for y := range height {
+		for x := range width {
+			idx := getIdx(byte(x), byte(y))
+			if d.pixels[idx] {
+				min := pixel.V(float64(x)*scale, float64(height-int(y))*scale)
+				max := pixel.V(float64(x+1)*scale, float64(height-int(y+1))*scale)
+				imd.Push(min, max)
+				imd.Rectangle(0)
+			}
+		}
+	}
+
+	imd.Draw(d.win)
+}
+
+func getIdx(x, y byte) uint16 {
+	return uint16(x) + uint16(y)*width
+}
+
+func (d *Display) GetWindow() *pixelgl.Window {
+	return d.win
 }

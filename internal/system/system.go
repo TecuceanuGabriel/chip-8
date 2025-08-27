@@ -2,16 +2,18 @@ package system
 
 import (
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"os"
-	"syscall"
+	"time"
 	"unicode"
-
-	"github.com/eiannone/keyboard"
 
 	"github.com/TecuceanuGabriel/chip-8/internal/display"
 	"github.com/TecuceanuGabriel/chip-8/internal/stack"
-	"github.com/TecuceanuGabriel/chip-8/internal/timer"
+
+	"github.com/gopxl/beep"
+	"github.com/gopxl/beep/speaker"
+	"github.com/gopxl/pixel/pixelgl"
 )
 
 var font = []byte{
@@ -42,8 +44,8 @@ const (
 const keymapPath = "./KEYMAP"
 
 const (
-	keyNone = iota
-	keyPressed
+	targetFPS      = 60
+	nrInstPerFrame = 10
 )
 
 type System struct {
@@ -52,36 +54,27 @@ type System struct {
 	call_stack stack.Stack[uint16]
 	registers  []byte
 	iReg       uint16
-	display    display.Display
 
-	keymap  map[byte]byte
-	keyChan <-chan keyboard.KeyEvent
+	display display.Display
 
-	keyWaitState   int
-	lastPressedKey byte
+	soundTimer byte
+	delayTimer byte
 
-	soundTimer timer.Timer
-	delayTimer timer.Timer
+	keymap            map[byte]byte
+	keyState          [16]bool
+	waitingForRelease bool
+	lastPressedKey    byte
+
+	beepSampleRate beep.SampleRate
+	isBeeping      bool
 }
 
 func CreateSystem() (system *System) {
-	keyChan, err := keyboard.GetKeys(10)
-	if err != nil {
-		fmt.Println("Failed to create keyboard channel", err)
-		os.Exit(1)
-	}
-
-	exitChan := make(chan keyboard.KeyEvent, 10)
-	inputChan := make(chan keyboard.KeyEvent, 10)
-
 	system = &System{
-		memory:     make([]byte, memorySize),
-		pc:         firstInstructionAdd,
-		registers:  make([]byte, 16),
-		keymap:     loadKeymap(),
-		keyChan:    inputChan,
-		delayTimer: *timer.NewTimer(nil),
-		soundTimer: *timer.NewTimer(beep),
+		memory:    make([]byte, memorySize),
+		pc:        firstInstructionAdd,
+		registers: make([]byte, 16),
+		keymap:    loadKeymap(),
 	}
 
 	copy(system.memory[fontStartAddr:], font)
@@ -96,31 +89,103 @@ func CreateSystem() (system *System) {
 
 	copy(system.memory[firstInstructionAdd:], rom)
 
-	go func() {
-		for key := range keyChan {
-			if key.Key == keyboard.KeyCtrlC {
-				select {
-				case exitChan <- key:
-				default:
-				}
-			}
-
-			select {
-			case inputChan <- key:
-			default:
-			}
-		}
-	}()
-
-	go listenForExit(exitChan)
+	system.beepSampleRate = beep.SampleRate(44100)
+	err = speaker.Init(system.beepSampleRate, system.beepSampleRate.N(time.Second/10))
+	if err != nil {
+		fmt.Printf("Failed to initialize audio: %v\n", err)
+	}
 
 	return system
 }
 
-func listenForExit(exitChan <-chan keyboard.KeyEvent) {
-	for range exitChan {
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+func (system *System) Run() {
+	display, err := display.NewDisplay()
+	if err != nil {
+		fmt.Println("Failed to create display")
+		os.Exit(1)
 	}
+
+	system.display = *display
+
+	win := system.display.GetWindow()
+
+	ticker := time.NewTicker(time.Second / targetFPS)
+	defer ticker.Stop()
+
+	exit := false
+	for !win.Closed() && !exit {
+		for range ticker.C {
+			if system.handleInput() {
+				exit = true
+				break
+			}
+
+			for range nrInstPerFrame {
+				instruction := system.Fetch()
+
+				err := system.Decode(instruction)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+			}
+
+			system.updateTimers()
+			win.Update()
+		}
+	}
+}
+
+func (system *System) handleInput() bool {
+	win := system.display.GetWindow()
+
+	if win.Pressed(pixelgl.KeyEscape) {
+		return true
+	}
+
+	for key := range system.keymap {
+		if win.Pressed(pixelgl.Button(key)) {
+			system.keyState[system.keymap[key]] = true
+		} else {
+			system.keyState[system.keymap[key]] = false
+		}
+	}
+
+	return false
+}
+
+func (system *System) updateTimers() {
+	if system.delayTimer > 0 {
+		system.delayTimer--
+	}
+
+	if system.soundTimer > 0 {
+		system.soundTimer--
+		if !system.isBeeping {
+			system.startBeep()
+		}
+	} else if system.isBeeping {
+		system.stopBeep()
+	}
+}
+
+func (system *System) startBeep() {
+	streamer := beep.StreamerFunc(func(samples [][2]float64) (n int, ok bool) {
+		for i := range samples {
+			sample := math.Sin(2 * math.Pi * 440 * float64(i) / float64(system.beepSampleRate)) // A4
+			samples[i][0] = sample * 0.5                                                        // 50% volume
+			samples[i][1] = sample * 0.5
+		}
+		return len(samples), true
+	})
+
+	speaker.Play(streamer)
+	system.isBeeping = true
+}
+
+func (system *System) stopBeep() {
+	speaker.Clear()
+	system.isBeeping = false
 }
 
 func loadKeymap() (keymap map[byte]byte) {
@@ -143,20 +208,12 @@ func loadKeymap() (keymap map[byte]byte) {
 			continue
 		}
 
-		key := byte(unicode.ToLower(rune(b)))
+		key := byte(unicode.ToUpper(rune(b)))
 		keymap[key] = original_keys[i]
 		i++
 	}
 
 	return keymap
-}
-
-func beep() {
-	fmt.Print("\a")
-}
-
-func (system *System) Close() {
-	keyboard.Close()
 }
 
 func (system *System) Fetch() (instruction []byte) {
@@ -263,13 +320,13 @@ func (system *System) decodeArithmetic(instType, x_addr, y_addr byte) {
 func (system *System) decodeF(instType, x_addr byte) {
 	switch instType {
 	case 0x07: // LD Vx, DT
-		system.registers[x_addr] = system.delayTimer.Get()
+		system.registers[x_addr] = system.delayTimer
 	case 0x0A: // LD Vx, K
 		system.get_key(x_addr)
 	case 0x15: // LD DT, Vx
-		system.delayTimer.Set(system.registers[x_addr])
+		system.delayTimer = system.registers[x_addr]
 	case 0x18: // LD ST, Vx
-		system.soundTimer.Set(system.registers[x_addr])
+		system.soundTimer = system.registers[x_addr]
 	case 0x1E: // ADD I, Vx
 		system.addToIReg(x_addr)
 	case 0x29: // LD F, Vx
@@ -386,58 +443,55 @@ func (system *System) drw(x_addr, y_addr, n byte) {
 	pos_y := system.registers[y_addr]
 
 	system.registers[0xF] = 0
-	erasing, err := system.display.DrawSprite(sprite, pos_x, pos_y, n)
+	collision, err := system.display.DrawSprite(sprite, pos_x, pos_y, n)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	if erasing {
+	if collision {
 		system.registers[0xF] = 1
 	}
 }
 
 func (system *System) skip_pressed(x_addr byte) {
-	key, hasInput := system.GetPressedKey()
-	if hasInput && key == system.registers[x_addr] {
+	if system.keyState[system.registers[x_addr]] {
 		system.pc += 2
 	}
 }
 
 func (system *System) skip_not_pressed(x_addr byte) {
-	key, hasInput := system.GetPressedKey()
-	if !hasInput || (hasInput && (key != system.registers[x_addr])) {
+	if !system.keyState[system.registers[x_addr]] {
 		system.pc += 2
 	}
 }
 
 func (system *System) get_key(x_addr byte) {
-	switch system.keyWaitState {
-	case keyNone:
-		key, pressed := system.GetPressedKey()
+	key, pressed := system.getPressedKey()
+
+	if system.waitingForRelease {
+		if !pressed || key != system.lastPressedKey {
+			system.waitingForRelease = false
+			system.registers[x_addr] = key
+			return
+		}
+	} else {
 		if pressed {
-			system.keyWaitState = keyPressed
+			system.waitingForRelease = true
 			system.lastPressedKey = key
 		}
-		system.pc -= 2 // block
-	case keyPressed:
-		key, pressed := system.GetPressedKey()
-		if !pressed || key != system.lastPressedKey {
-			system.registers[x_addr] = system.lastPressedKey
-			system.keyWaitState = keyNone
-		} else {
-			system.pc -= 2
-		}
 	}
+
+	system.pc -= 2
 }
 
-func (system *System) GetPressedKey() (byte, bool) {
-	select {
-	case key := <-system.keyChan:
-		return system.keymap[byte(key.Rune)], true
-	default:
-		return 0, false
+func (system *System) getPressedKey() (byte, bool) {
+	for key, pressed := range system.keyState {
+		if pressed {
+			return byte(key), true
+		}
 	}
+	return 0, false
 }
 
 func (system *System) addToIReg(x_addr byte) {
