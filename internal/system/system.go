@@ -7,11 +7,10 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/eiannone/keyboard"
-	"github.com/faiface/pixel/pixelgl"
-
 	"github.com/TecuceanuGabriel/chip-8/internal/display"
 	"github.com/TecuceanuGabriel/chip-8/internal/stack"
+
+	"github.com/gopxl/pixel/pixelgl"
 )
 
 var font = []byte{
@@ -184,10 +183,6 @@ func loadKeymap() (keymap map[byte]byte) {
 	}
 
 	return keymap
-}
-
-func (system *System) Close() {
-	keyboard.Close()
 }
 
 func (system *System) Fetch() (instruction []byte) {

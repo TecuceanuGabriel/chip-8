@@ -6,7 +6,7 @@ import (
 
 	"github.com/TecuceanuGabriel/chip-8/internal/system"
 
-	"github.com/faiface/pixel/pixelgl"
+	"github.com/gopxl/pixel/pixelgl"
 )
 
 func main() {
@@ -16,7 +16,5 @@ func main() {
 	}
 
 	sys := system.CreateSystem()
-	defer sys.Close()
-
 	pixelgl.Run(sys.Run)
 }
