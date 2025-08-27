@@ -1,8 +1,6 @@
 package display
 
 import (
-	"image/color"
-
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
@@ -18,7 +16,6 @@ const (
 type Display struct {
 	pixels [width * height]bool
 	win    *pixelgl.Window
-	sprite *pixel.Sprite
 }
 
 func NewDisplay() (*Display, error) {
@@ -40,64 +37,80 @@ func NewDisplay() (*Display, error) {
 
 func (d *Display) ClearScreen() {
 	d.win.Clear(colornames.Black)
-	for i := range height {
-		for j := range width {
-			d.pixels[j+i*width] = false
+	for y := range height {
+		for x := range width {
+			d.pixels[getIdx(byte(x), byte(y))] = false
 		}
 	}
 }
 
-func (d *Display) DrawSprite(sprite []byte, pos_x, pos_y, n byte) (erasing bool, err error) {
-	erasing = false
+func (d *Display) DrawSprite(sprite []byte, pos_x, pos_y, n byte) (collision bool, err error) {
+	collision = false
 
 	// wrap coordinates
 	pos_x = pos_x % width
 	pos_y = pos_y % height
 
 	for i := range n {
-		if pos_y+i > height {
+		if pos_y+i >= height {
 			break
 		}
 
 		line := sprite[i]
 		for j := range byte(8) {
-			if pos_x+j > width {
+			if pos_x+j >= width {
 				break
 			}
 
 			fill := (line>>(7-j))&1 == 1
-			if d.drawCell(fill, pos_x+j, pos_y+i) {
-				erasing = true
+
+			if d.setCell(fill, pos_x+j, pos_y+i) {
+				collision = true
 			}
 		}
 	}
 
-	return erasing, nil
+	d.render()
+	return collision, nil
 }
 
-func (d *Display) drawCell(fill bool, pos_x, pos_y byte) (erasing bool) {
-	erasing = false
-	idx := pos_x + pos_y*width
+func (d *Display) setCell(fill bool, x, y byte) (collision bool) {
+	collision = false
+	idx := getIdx(x, y)
 
-	if fill == true {
-		if d.pixels[idx] == true {
-			d.pixels[idx] = false
-			erasing = true
-		} else {
-			d.pixels[idx] = true
+	if fill {
+		if d.pixels[idx] {
+			collision = true
 		}
-
-		min := pixel.V(float64(pos_x)*scale, float64(height-int(pos_y))*scale)
-		max := pixel.V(float64(pos_x+1)*scale, float64(height-int(pos_y+1))*scale)
-
-		imd := imdraw.New(nil)
-		imd.Color = color.White
-		imd.Push(min, max)
-		imd.Rectangle(0)
-		imd.Draw(d.win)
+		d.pixels[idx] = !d.pixels[idx]
 	}
 
-	return erasing
+	return collision
+}
+
+func (d *Display) render() {
+	d.win.Clear(colornames.Black)
+
+	imd := imdraw.New(nil)
+	imd.Color = colornames.White
+
+	for y := range height {
+		for x := range width {
+			idx := getIdx(byte(x), byte(y))
+			if d.pixels[idx] {
+				min := pixel.V(float64(x)*scale, float64(height-int(y))*scale)
+				max := pixel.V(float64(x+1)*scale, float64(height-int(y+1))*scale)
+				imd.Push(min, max)
+				imd.Rectangle(0)
+			}
+		}
+	}
+
+	imd.Draw(d.win)
+}
+
+func getIdx(x, y byte) uint16 {
+	return uint16(x) + uint16(y)*width
 }
 
 func (d *Display) GetWindow() *pixelgl.Window {

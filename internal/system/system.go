@@ -43,7 +43,7 @@ const keymapPath = "./KEYMAP"
 
 const (
 	targetFPS      = 60
-	nrInstPerFrame = 20
+	nrInstPerFrame = 10
 )
 
 type System struct {
@@ -417,13 +417,13 @@ func (system *System) drw(x_addr, y_addr, n byte) {
 	pos_y := system.registers[y_addr]
 
 	system.registers[0xF] = 0
-	erasing, err := system.display.DrawSprite(sprite, pos_x, pos_y, n)
+	collision, err := system.display.DrawSprite(sprite, pos_x, pos_y, n)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	if erasing {
+	if collision {
 		system.registers[0xF] = 1
 	}
 }
