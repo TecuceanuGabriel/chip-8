@@ -2,6 +2,7 @@ package system
 
 import (
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"os"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/TecuceanuGabriel/chip-8/internal/display"
 	"github.com/TecuceanuGabriel/chip-8/internal/stack"
 
+	"github.com/gopxl/beep"
+	"github.com/gopxl/beep/speaker"
 	"github.com/gopxl/pixel/pixelgl"
 )
 
@@ -54,13 +57,16 @@ type System struct {
 
 	display display.Display
 
+	soundTimer byte
+	delayTimer byte
+
 	keymap            map[byte]byte
 	keyState          [16]bool
 	waitingForRelease bool
 	lastPressedKey    byte
 
-	soundTimer byte
-	delayTimer byte
+	beepSampleRate beep.SampleRate
+	isBeeping      bool
 }
 
 func CreateSystem() (system *System) {
@@ -82,6 +88,12 @@ func CreateSystem() (system *System) {
 	}
 
 	copy(system.memory[firstInstructionAdd:], rom)
+
+	system.beepSampleRate = beep.SampleRate(44100)
+	err = speaker.Init(system.beepSampleRate, system.beepSampleRate.N(time.Second/10))
+	if err != nil {
+		fmt.Printf("Failed to initialize audio: %v\n", err)
+	}
 
 	return system
 }
@@ -149,12 +161,31 @@ func (system *System) updateTimers() {
 
 	if system.soundTimer > 0 {
 		system.soundTimer--
-		beep()
+		if !system.isBeeping {
+			system.startBeep()
+		}
+	} else if system.isBeeping {
+		system.stopBeep()
 	}
 }
 
-func beep() {
-	//TODO:
+func (system *System) startBeep() {
+	streamer := beep.StreamerFunc(func(samples [][2]float64) (n int, ok bool) {
+		for i := range samples {
+			sample := math.Sin(2 * math.Pi * 440 * float64(i) / float64(system.beepSampleRate)) // A4
+			samples[i][0] = sample * 0.5                                                        // 50% volume
+			samples[i][1] = sample * 0.5
+		}
+		return len(samples), true
+	})
+
+	speaker.Play(streamer)
+	system.isBeeping = true
+}
+
+func (system *System) stopBeep() {
+	speaker.Clear()
+	system.isBeeping = false
 }
 
 func loadKeymap() (keymap map[byte]byte) {

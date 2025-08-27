@@ -37,10 +37,8 @@ func NewDisplay() (*Display, error) {
 
 func (d *Display) ClearScreen() {
 	d.win.Clear(colornames.Black)
-	for y := range height {
-		for x := range width {
-			d.pixels[getIdx(byte(x), byte(y))] = false
-		}
+	for idx := range d.pixels {
+		d.pixels[idx] = false
 	}
 }
 
