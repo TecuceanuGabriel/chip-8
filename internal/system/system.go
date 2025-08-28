@@ -67,6 +67,8 @@ type System struct {
 
 	beepSampleRate beep.SampleRate
 	isBeeping      bool
+
+	isPaused bool
 }
 
 func CreateSystem() (system *System) {
@@ -115,9 +117,16 @@ func (system *System) Run() {
 	exit := false
 	for !win.Closed() && !exit {
 		for range ticker.C {
+			win.Update()
+
 			if system.handleInput() {
 				exit = true
 				break
+			}
+
+			if system.isPaused {
+				fmt.Println("paused")
+				continue
 			}
 
 			for range nrInstPerFrame {
@@ -129,15 +138,18 @@ func (system *System) Run() {
 					os.Exit(1)
 				}
 			}
-
 			system.updateTimers()
-			win.Update()
 		}
 	}
 }
 
 func (system *System) handleInput() bool {
 	win := system.display.GetWindow()
+
+	if win.Pressed(pixelgl.KeySpace) {
+		system.isPaused = !system.isPaused
+		return false
+	}
 
 	if win.Pressed(pixelgl.KeyEscape) {
 		return true
