@@ -352,11 +352,19 @@ func printDis(sys *system.System, pc uint16, n int) {
 		if len(mem) < 2 {
 			break
 		}
-		marker := "  "
+		var marker string
 		if addr == pc {
-			marker = "→ "
+			marker = arrowStyle.Render("→ ")
+		} else {
+			marker = "  "
 		}
-		fmt.Printf("%s0x%03X  %s\n", marker, addr, disasm.Disassemble(mem))
+		parts := strings.SplitN(disasm.Disassemble(mem), " ", 2)
+		mnemonic := mnemoColor.Render(parts[0])
+		args := ""
+		if len(parts) > 1 {
+			args = " " + parts[1]
+		}
+		fmt.Printf("%s%s  %s%s\n", marker, addrColor.Render(fmt.Sprintf("0x%03X", addr)), mnemonic, args)
 	}
 	fmt.Println()
 }
@@ -365,12 +373,16 @@ func printRegs(sys *system.System) {
 	regs := sys.Registers()
 	fmt.Println()
 	for i := range 16 {
-		fmt.Printf("  V%X = 0x%02X (%3d)", i, regs[i], regs[i])
+		val := regValColor.Render(fmt.Sprintf("0x%02X", regs[i]))
+		fmt.Printf("  V%X = %s (%3d)", i, val, regs[i])
 		if i%4 == 3 {
 			fmt.Println()
 		}
 	}
-	fmt.Printf("  PC = 0x%03X   I = 0x%03X\n\n", sys.PC(), sys.IReg())
+	fmt.Printf("  PC = %s   I = %s\n\n",
+		addrColor.Render(fmt.Sprintf("0x%03X", sys.PC())),
+		addrColor.Render(fmt.Sprintf("0x%03X", sys.IReg())),
+	)
 }
 
 func printMem(sys *system.System, addr uint16, n int) {
@@ -378,7 +390,7 @@ func printMem(sys *system.System, addr uint16, n int) {
 	fmt.Println()
 	for i, b := range mem {
 		if i%16 == 0 {
-			fmt.Printf("  0x%03X: ", addr+uint16(i))
+			fmt.Printf("  %s ", addrColor.Render(fmt.Sprintf("0x%03X:", addr+uint16(i))))
 		}
 		fmt.Printf("%02X ", b)
 		if i%16 == 15 {
