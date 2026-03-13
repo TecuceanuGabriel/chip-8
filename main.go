@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/TecuceanuGabriel/chip-8/internal/debugger"
 	"github.com/TecuceanuGabriel/chip-8/internal/system"
 
 	"github.com/gopxl/pixel/pixelgl"
@@ -29,5 +30,8 @@ func main() {
 	}
 
 	sys := system.CreateSystem(romPath, debugMode)
+	if debugMode {
+		go debugger.Start(sys)
+	}
 	pixelgl.Run(sys.Run)
 }

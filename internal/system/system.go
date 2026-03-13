@@ -96,6 +96,7 @@ func CreateSystem(romPath string, debugMode bool) (system *System) {
 	copy(system.memory[firstInstructionAdd:], rom)
 
 	if debugMode {
+		system.isPaused = true
 		system.debug = &debugState{
 			breakpoints: make(map[uint16]bool),
 			debugChan:   make(chan DebugCmd),
