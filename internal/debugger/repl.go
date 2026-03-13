@@ -4,13 +4,16 @@ package debugger
 import (
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/TecuceanuGabriel/chip-8/internal/disasm"
 	"github.com/TecuceanuGabriel/chip-8/internal/system"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/chzyer/readline"
+	"golang.org/x/term"
 )
 
 const contextLines = 5 // instructions shown around PC on each pause
@@ -206,8 +209,99 @@ func parseAddr(parts []string, idx int) (uint16, bool) {
 	return uint16(v), true
 }
 
+var (
+	colStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("240")).
+			Padding(0, 1)
+
+	addrColor   = lipgloss.NewStyle().Foreground(lipgloss.Color("6")) // cyan
+	mnemoColor  = lipgloss.NewStyle().Foreground(lipgloss.Color("3")) // yellow
+	arrowStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
+	regValColor = lipgloss.NewStyle().Foreground(lipgloss.Color("10")) // green
+	keyOnStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
+	keyOffStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+)
+
 func printContext(sys *system.System) {
-	printDis(sys, sys.PC(), contextLines)
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || width < 80 {
+		printDis(sys, sys.PC(), contextLines)
+		printRegs(sys)
+		printKeys(sys)
+		return
+	}
+
+	fmt.Println(lipgloss.JoinHorizontal(lipgloss.Top,
+		colStyle.Render(disasmBlock(sys)),
+		colStyle.Render(regsBlock(sys)),
+		colStyle.Render(keysBlock(sys)),
+	))
+}
+
+func disasmBlock(sys *system.System) string {
+	pc := sys.PC()
+	var sb strings.Builder
+	for i := range contextLines {
+		addr := pc + uint16(i*2)
+		mem := sys.MemorySlice(addr, 2)
+		if len(mem) < 2 {
+			break
+		}
+		if i > 0 {
+			sb.WriteByte('\n')
+		}
+		if addr == pc {
+			sb.WriteString(arrowStyle.Render("→ "))
+		} else {
+			sb.WriteString("  ")
+		}
+		parts := strings.SplitN(disasm.Disassemble(mem), " ", 2)
+		sb.WriteString(addrColor.Render(fmt.Sprintf("0x%03X", addr)) + "  ")
+		sb.WriteString(mnemoColor.Render(parts[0]))
+		if len(parts) > 1 {
+			sb.WriteString(" " + parts[1])
+		}
+	}
+	return sb.String()
+}
+
+func regsBlock(sys *system.System) string {
+	regs := sys.Registers()
+	var sb strings.Builder
+	for i := range 16 {
+		if i > 0 {
+			sb.WriteByte('\n')
+		}
+		label := fmt.Sprintf("V%X", i)
+		val := regValColor.Render(fmt.Sprintf("0x%02X", regs[i]))
+		sb.WriteString(fmt.Sprintf("%-2s = %s (%3d)", label, val, regs[i]))
+	}
+	sb.WriteString("\n" + fmt.Sprintf("PC = %s", addrColor.Render(fmt.Sprintf("0x%03X", sys.PC()))))
+	sb.WriteString("   " + fmt.Sprintf("I  = %s", addrColor.Render(fmt.Sprintf("0x%03X", sys.IReg()))))
+	sb.WriteString("\n" + fmt.Sprintf("DT = %s", regValColor.Render(fmt.Sprintf("%-3d", sys.DelayTimer()))))
+	sb.WriteString("   " + fmt.Sprintf("ST = %s", regValColor.Render(fmt.Sprintf("%-3d", sys.SoundTimer()))))
+	return sb.String()
+}
+
+func keysBlock(sys *system.System) string {
+	state := sys.KeyState()
+	order := []byte{1, 2, 3, 0xC, 4, 5, 6, 0xD, 7, 8, 9, 0xE, 0xA, 0, 0xB, 0xF}
+	labels := []string{"1", "2", "3", "C", "4", "5", "6", "D", "7", "8", "9", "E", "A", "0", "B", "F"}
+	var sb strings.Builder
+	for i, k := range order {
+		if i > 0 && i%4 == 0 {
+			sb.WriteByte('\n')
+		} else if i%4 != 0 {
+			sb.WriteString("  ")
+		}
+		if state[k] {
+			sb.WriteString(keyOnStyle.Render(labels[i]))
+		} else {
+			sb.WriteString(keyOffStyle.Render(labels[i]))
+		}
+	}
+	return sb.String()
 }
 
 func printDis(sys *system.System, pc uint16, n int) {
