@@ -51,6 +51,7 @@ const (
 // System holds the full state of the CHIP-8 virtual machine: memory, registers,
 // timers, display, audio, and input.
 type System struct {
+	romPath   string
 	memory    []byte
 	pc        uint16
 	callStack stack.Stack[uint16]
@@ -76,13 +77,20 @@ type System struct {
 }
 
 // CreateSystem allocates and initialises a new System, loading romPath into
-// memory at 0x200. Audio is muted when debugMode is true.
-func CreateSystem(romPath string, debugMode bool) (system *System) {
+// memory at 0x200.
+func CreateSystem(romPath string) (system *System) {
 	system = &System{
+		romPath:   romPath,
 		memory:    make([]byte, memorySize),
 		pc:        firstInstructionAdd,
 		registers: make([]byte, 16),
 		keymap:    loadKeymap(),
+		isPaused:  true,
+		debug: &debugSession{
+			breakpoints: make(map[uint16]bool),
+			debugChan:   make(chan DebugCmd),
+			eventChan:   make(chan DebugEvent),
+		},
 	}
 
 	copy(system.memory[fontStartAddr:], font)
@@ -95,19 +103,10 @@ func CreateSystem(romPath string, debugMode bool) (system *System) {
 
 	copy(system.memory[firstInstructionAdd:], rom)
 
-	if debugMode {
-		system.isPaused = true
-		system.debug = &debugSession{
-			breakpoints: make(map[uint16]bool),
-			debugChan:   make(chan DebugCmd),
-			eventChan:   make(chan DebugEvent),
-		}
-	} else {
-		system.beepSampleRate = beep.SampleRate(44100)
-		err = speaker.Init(system.beepSampleRate, system.beepSampleRate.N(time.Second/10))
-		if err != nil {
-			fmt.Printf("Failed to initialize audio: %v\n", err)
-		}
+	system.beepSampleRate = beep.SampleRate(44100)
+	err = speaker.Init(system.beepSampleRate, system.beepSampleRate.N(time.Second/10))
+	if err != nil {
+		fmt.Printf("Failed to initialize audio: %v\n", err)
 	}
 
 	return system
@@ -139,17 +138,7 @@ func (system *System) Run() {
 				break
 			}
 
-			if system.debug != nil {
-				system.runDebugFrame()
-			} else {
-				if system.isPaused {
-					continue
-				}
-				for range nrInstPerFrame {
-					system.execInstruction()
-				}
-				system.updateTimers()
-			}
+			system.runDebugFrame()
 		}
 	}
 }
@@ -171,14 +160,9 @@ func (system *System) handleInput() bool {
 	}
 
 	if win.Pressed(pixelgl.KeySpace) {
-		if system.debug != nil {
-			// in debug mode space breaks into the debugger.
-			if !system.isPaused {
-				system.isPaused = true
-				system.debug.eventChan <- EventStep{PC: system.pc}
-			}
-		} else {
-			system.isPaused = !system.isPaused
+		if !system.isPaused {
+			system.isPaused = true
+			system.debug.eventChan <- EventStep{PC: system.pc}
 		}
 		return false
 	}
