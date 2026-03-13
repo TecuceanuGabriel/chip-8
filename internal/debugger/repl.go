@@ -76,6 +76,14 @@ func Start(sys *system.System) {
 				rl.Refresh()
 			}()
 
+		case "audio":
+			sys.DebugChan() <- system.CmdToggleAudio{}
+			if sys.AudioMuted() {
+				fmt.Println("audio off")
+			} else {
+				fmt.Println("audio on")
+			}
+
 		case "reset":
 			sys.DebugChan() <- system.CmdReset{}
 			<-sys.EventChan()
@@ -281,6 +289,11 @@ func regsBlock(sys *system.System) string {
 	sb.WriteString("   " + fmt.Sprintf("I  = %s", addrColor.Render(fmt.Sprintf("0x%03X", sys.IReg()))))
 	sb.WriteString("\n" + fmt.Sprintf("DT = %s", regValColor.Render(fmt.Sprintf("%-3d", sys.DelayTimer()))))
 	sb.WriteString("   " + fmt.Sprintf("ST = %s", regValColor.Render(fmt.Sprintf("%-3d", sys.SoundTimer()))))
+	if sys.AudioMuted() {
+		sb.WriteString("\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render("audio off"))
+	} else {
+		sb.WriteString("\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render("audio on"))
+	}
 	return sb.String()
 }
 

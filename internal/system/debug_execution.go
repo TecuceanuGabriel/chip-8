@@ -89,6 +89,11 @@ func (system *System) handleDebugCmd(cmd DebugCmd) {
 		system.keyState[c.Key] = true
 	case CmdReleaseKey:
 		system.keyState[c.Key] = false
+	case CmdToggleAudio:
+		system.audioMuted = !system.audioMuted
+		if system.audioMuted {
+			system.stopBeep()
+		}
 	case CmdReset:
 		system.reset()
 		system.debug.stepMode = false

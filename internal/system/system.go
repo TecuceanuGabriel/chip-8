@@ -70,6 +70,7 @@ type System struct {
 
 	beepSampleRate beep.SampleRate
 	isBeeping      bool
+	audioMuted     bool
 
 	isPaused bool
 
@@ -185,7 +186,7 @@ func (system *System) updateTimers() {
 
 	if system.soundTimer > 0 {
 		system.soundTimer--
-		if !system.isBeeping {
+		if !system.isBeeping && !system.audioMuted {
 			system.startBeep()
 		}
 	} else if system.isBeeping {
@@ -622,6 +623,9 @@ func (s *System) SoundTimer() byte { return s.soundTimer }
 
 // KeyState returns the current state of all 16 keys.
 func (s *System) KeyState() [16]bool { return s.keyState }
+
+// AudioMuted returns whether audio is currently muted.
+func (s *System) AudioMuted() bool { return s.audioMuted }
 
 // Breakpoints returns the list of currently set breakpoint addresses.
 func (s *System) Breakpoints() []uint16 {
