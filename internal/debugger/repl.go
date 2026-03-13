@@ -66,6 +66,15 @@ func Start(sys *system.System) {
 
 		case "c", "continue":
 			sys.DebugChan() <- system.CmdContinue{}
+			go func() {
+				<-sys.EventChan()
+				rl.Clean()
+				printContext(sys)
+				rl.Refresh()
+			}()
+
+		case "reset":
+			sys.DebugChan() <- system.CmdReset{}
 			<-sys.EventChan()
 			printContext(sys)
 

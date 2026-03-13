@@ -89,6 +89,11 @@ func (system *System) handleDebugCmd(cmd DebugCmd) {
 		system.keyState[c.Key] = true
 	case CmdReleaseKey:
 		system.keyState[c.Key] = false
+	case CmdReset:
+		system.reset()
+		system.debug.stepMode = false
+		system.debug.stepsLeft = 0
+		system.debug.eventChan <- EventStep{PC: system.pc}
 	case CmdQuit:
 		os.Exit(0)
 	default:

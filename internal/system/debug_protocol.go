@@ -25,6 +25,9 @@ type CmdReleaseKey struct{ Key byte }
 // CmdQuit signals the game loop to exit.
 type CmdQuit struct{}
 
+// CmdReset reloads the ROM and resets all VM state.
+type CmdReset struct{}
+
 func (CmdStep) debugCmd()             {}
 func (CmdContinue) debugCmd()         {}
 func (CmdSetBreakpoint) debugCmd()    {}
@@ -32,6 +35,7 @@ func (CmdRemoveBreakpoint) debugCmd() {}
 func (CmdSetKey) debugCmd()           {}
 func (CmdReleaseKey) debugCmd()       {}
 func (CmdQuit) debugCmd()             {}
+func (CmdReset) debugCmd()            {}
 
 // DebugEvent is the interface implemented by all events sent from the game loop
 // to the debugger goroutine.

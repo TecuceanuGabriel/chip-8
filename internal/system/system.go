@@ -561,6 +561,33 @@ func (system *System) loadReg(x byte) {
 	}
 }
 
+// reset reloads the ROM and zeroes all VM state, leaving the session intact.
+func (system *System) reset() {
+	clear(system.memory)
+	copy(system.memory[fontStartAddr:], font)
+
+	rom, err := os.ReadFile(system.romPath)
+	if err != nil {
+		fmt.Printf("Failed to load rom: %v\n", system.romPath)
+		os.Exit(1)
+	}
+	copy(system.memory[firstInstructionAdd:], rom)
+
+	system.pc = firstInstructionAdd
+	system.iReg = 0
+	system.registers = make([]byte, 16)
+	system.callStack = stack.Stack[uint16]{}
+	system.delayTimer = 0
+	system.soundTimer = 0
+	system.keyState = [16]bool{}
+	system.waitingForRelease = false
+	system.lastPressedKey = 0
+
+	system.stopBeep()
+	system.display.ClearScreen()
+	system.isPaused = true
+}
+
 // --- Read-only accessors used by the debugger ---
 
 // PC returns the current program counter.
