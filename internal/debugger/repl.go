@@ -104,6 +104,26 @@ func Start(sys *system.System) {
 				}
 			}
 
+		// --- key injection ---
+
+		case "press":
+			key, ok := parseKey(parts, 1)
+			if !ok {
+				fmt.Println("usage: press <0-9|A-F>")
+				continue
+			}
+			sys.DebugChan() <- system.CmdSetKey{Key: key}
+			fmt.Printf("key %X pressed\n", key)
+
+		case "release":
+			key, ok := parseKey(parts, 1)
+			if !ok {
+				fmt.Println("usage: release <0-9|A-F>")
+				continue
+			}
+			sys.DebugChan() <- system.CmdReleaseKey{Key: key}
+			fmt.Printf("key %X released\n", key)
+
 		// --- state views ---
 
 		case "r", "regs":
@@ -146,12 +166,23 @@ func Start(sys *system.System) {
 
 		default:
 			fmt.Printf("unknown command %q\n", parts[0])
-			fmt.Println("commands: step [N], continue, quit, b/rb/lb, regs, mem, timers, keys, dis [N]")
+			fmt.Println("commands: step [N], continue, quit, b/rb/lb, regs, mem, timers, keys, dis [N], press/release <key>")
 		}
 	}
 }
 
 // --- helpers ---
+
+func parseKey(parts []string, idx int) (byte, bool) {
+	if len(parts) <= idx || len(parts[idx]) != 1 {
+		return 0, false
+	}
+	v, err := strconv.ParseUint(strings.ToUpper(parts[idx]), 16, 8)
+	if err != nil || v > 0xF {
+		return 0, false
+	}
+	return byte(v), true
+}
 
 func parseAddr(parts []string, idx int) (uint16, bool) {
 	if len(parts) <= idx {
