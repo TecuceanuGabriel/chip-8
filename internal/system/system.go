@@ -612,6 +612,15 @@ func (s *System) SoundTimer() byte { return s.soundTimer }
 // KeyState returns the current state of all 16 keys.
 func (s *System) KeyState() [16]bool { return s.keyState }
 
+// Breakpoints returns the list of currently set breakpoint addresses.
+func (s *System) Breakpoints() []uint16 {
+	addrs := make([]uint16, 0, len(s.debug.breakpoints))
+	for addr := range s.debug.breakpoints {
+		addrs = append(addrs, addr)
+	}
+	return addrs
+}
+
 // DebugChan returns the channel the debugger should send commands on.
 func (s *System) DebugChan() chan<- DebugCmd { return s.debug.debugChan }
 
