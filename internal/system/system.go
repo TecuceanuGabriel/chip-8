@@ -72,7 +72,7 @@ type System struct {
 
 	isPaused bool
 
-	debug *debugState 
+	debug *debugState
 }
 
 // CreateSystem allocates and initialises a new System, loading romPath into
@@ -138,35 +138,48 @@ func (system *System) Run() {
 				break
 			}
 
-			if system.isPaused {
-				fmt.Println("paused")
-				continue
-			}
-
-			for range nrInstPerFrame {
-				instruction := system.Fetch()
-
-				err := system.Decode(instruction)
-				if err != nil {
-					fmt.Println(err)
-					os.Exit(1)
+			if system.debug != nil {
+				system.runDebugFrame()
+			} else {
+				if system.isPaused {
+					continue
 				}
+				for range nrInstPerFrame {
+					system.execInstruction()
+				}
+				system.updateTimers()
 			}
-			system.updateTimers()
 		}
+	}
+}
+
+func (system *System) execInstruction() {
+	instruction := system.Fetch()
+	err := system.Decode(instruction)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
 
 func (system *System) handleInput() bool {
 	win := system.display.GetWindow()
 
-	if win.Pressed(pixelgl.KeySpace) {
-		system.isPaused = !system.isPaused
-		return false
-	}
-
 	if win.Pressed(pixelgl.KeyEscape) {
 		return true
+	}
+
+	if win.Pressed(pixelgl.KeySpace) {
+		if system.debug != nil {
+			// in debug mode space breaks into the debugger.
+			if !system.isPaused {
+				system.isPaused = true
+				system.debug.eventChan <- EventStep{PC: system.pc}
+			}
+		} else {
+			system.isPaused = !system.isPaused
+		}
+		return false
 	}
 
 	for key := range system.keymap {
@@ -562,3 +575,44 @@ func (system *System) loadReg(x byte) {
 		system.registers[idx] = system.memory[base+uint16(idx)]
 	}
 }
+
+// --- Read-only accessors used by the debugger ---
+
+// PC returns the current program counter.
+func (s *System) PC() uint16 { return s.pc }
+
+// IReg returns the current value of the I register.
+func (s *System) IReg() uint16 { return s.iReg }
+
+// Registers returns a copy of the 16 general-purpose registers.
+func (s *System) Registers() [16]byte {
+	var regs [16]byte
+	copy(regs[:], s.registers)
+	return regs
+}
+
+// MemorySlice returns a copy of n bytes of memory starting at addr.
+func (s *System) MemorySlice(addr uint16, n int) []byte {
+	end := int(addr) + n
+	if end > len(s.memory) {
+		end = len(s.memory)
+	}
+	out := make([]byte, end-int(addr))
+	copy(out, s.memory[addr:end])
+	return out
+}
+
+// DelayTimer returns the current delay timer value.
+func (s *System) DelayTimer() byte { return s.delayTimer }
+
+// SoundTimer returns the current sound timer value.
+func (s *System) SoundTimer() byte { return s.soundTimer }
+
+// KeyState returns the current state of all 16 keys.
+func (s *System) KeyState() [16]bool { return s.keyState }
+
+// DebugChan returns the channel the debugger should send commands on.
+func (s *System) DebugChan() chan<- DebugCmd { return s.debug.debugChan }
+
+// EventChan returns the channel the debugger should receive events from.
+func (s *System) EventChan() <-chan DebugEvent { return s.debug.eventChan }
