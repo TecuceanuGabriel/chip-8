@@ -49,11 +49,11 @@ const (
 )
 
 type System struct {
-	memory     []byte
-	pc         uint16
-	call_stack stack.Stack[uint16]
-	registers  []byte
-	iReg       uint16
+	memory    []byte
+	pc        uint16
+	callStack stack.Stack[uint16]
+	registers []byte
+	iReg      uint16
 
 	display display.Display
 
@@ -81,11 +81,11 @@ func CreateSystem() (system *System) {
 
 	copy(system.memory[fontStartAddr:], font)
 
-	rom_path := os.Args[1]
+	romPath := os.Args[1]
 
-	rom, err := os.ReadFile(rom_path)
+	rom, err := os.ReadFile(romPath)
 	if err != nil {
-		fmt.Printf("Failed to load rom: %v\n", rom_path)
+		fmt.Printf("Failed to load rom: %v\n", romPath)
 		os.Exit(1)
 	}
 
@@ -206,7 +206,7 @@ func loadKeymap() (keymap map[byte]byte) {
 		fmt.Printf("Failed to load keymap: %v\n", keymapPath)
 	}
 
-	original_keys := []byte{
+	originalKeys := []byte{
 		1, 2, 3, 0xC,
 		4, 5, 6, 0xD,
 		7, 8, 9, 0xE,
@@ -221,7 +221,7 @@ func loadKeymap() (keymap map[byte]byte) {
 		}
 
 		key := byte(unicode.ToUpper(rune(b)))
-		keymap[key] = original_keys[i]
+		keymap[key] = originalKeys[i]
 		i++
 	}
 
@@ -259,11 +259,11 @@ func (system *System) Decode(instruction []byte) error {
 	case 2: // CALL addr
 		system.call(last3Nibbles)
 	case 3: // SE Vx, byte
-		system.skip_equal_im(secondNibble, secondByte)
+		system.skipEqualImm(secondNibble, secondByte)
 	case 4: // SNE Vx, byte
-		system.skip_not_equal_im(secondNibble, secondByte)
+		system.skipNotEqualImm(secondNibble, secondByte)
 	case 5: // SE Vx, Vy
-		system.skip_equal(secondNibble, thirdNibble)
+		system.skipEqual(secondNibble, thirdNibble)
 	case 6: // LD Vx, byte
 		system.registers[secondNibble] = last2Nibbles
 	case 7: // ADD Vx, byte
@@ -271,7 +271,7 @@ func (system *System) Decode(instruction []byte) error {
 	case 8:
 		system.decodeArithmetic(fourthNibble, secondNibble, thirdNibble)
 	case 9: // SNE Vx, Vy
-		system.skip_not_equal(secondNibble, thirdNibble)
+		system.skipNotEqual(secondNibble, thirdNibble)
 	case 0xA: // LD I, addr
 		system.iReg = last3Nibbles
 	case 0xB: // JP V0, addr TODO: comp problem: make configurable?
@@ -284,9 +284,9 @@ func (system *System) Decode(instruction []byte) error {
 		{
 			switch secondByte {
 			case 0x9E: // SKP Vx
-				system.skip_pressed(secondNibble)
+				system.skipPressed(secondNibble)
 			case 0xA1: // SKNP Vx
-				system.skip_not_pressed(secondNibble)
+				system.skipNotPressed(secondNibble)
 			}
 		}
 	case 0xF:
@@ -301,26 +301,26 @@ func (system *System) Decode(instruction []byte) error {
 	return nil
 }
 
-func (system *System) decodeArithmetic(instType, x_addr, y_addr byte) {
+func (system *System) decodeArithmetic(instType, xAddr, yAddr byte) {
 	switch instType {
 	case 0: // LD Vx, Vy
-		system.registers[x_addr] = system.registers[y_addr]
+		system.registers[xAddr] = system.registers[yAddr]
 	case 1: // OR Vx, Vy
-		system.registers[x_addr] |= system.registers[y_addr]
+		system.registers[xAddr] |= system.registers[yAddr]
 	case 2: // AND Vx, Vy
-		system.registers[x_addr] &= system.registers[y_addr]
+		system.registers[xAddr] &= system.registers[yAddr]
 	case 3: // XOR Vx, Vy
-		system.registers[x_addr] ^= system.registers[y_addr]
+		system.registers[xAddr] ^= system.registers[yAddr]
 	case 4: // ADD Vx, Vy
-		system.add(x_addr, y_addr)
+		system.add(xAddr, yAddr)
 	case 5: // SUB Vx, Vy
-		system.sub(x_addr, y_addr)
+		system.sub(xAddr, yAddr)
 	case 6: // SHR Vx {, Vy}
-		system.shr(x_addr)
+		system.shr(xAddr)
 	case 7: // SUBN Vx, Vy
-		system.subn(x_addr, y_addr)
+		system.subn(xAddr, yAddr)
 	case 0xE: // AND Vx, Vy
-		system.shl(x_addr)
+		system.shl(xAddr)
 	default:
 		{
 			fmt.Printf("Unknown arithmetic instruction: %x\n", instType)
@@ -329,26 +329,26 @@ func (system *System) decodeArithmetic(instType, x_addr, y_addr byte) {
 	}
 }
 
-func (system *System) decodeF(instType, x_addr byte) {
+func (system *System) decodeF(instType, xAddr byte) {
 	switch instType {
 	case 0x07: // LD Vx, DT
-		system.registers[x_addr] = system.delayTimer
+		system.registers[xAddr] = system.delayTimer
 	case 0x0A: // LD Vx, K
-		system.get_key(x_addr)
+		system.getKey(xAddr)
 	case 0x15: // LD DT, Vx
-		system.delayTimer = system.registers[x_addr]
+		system.delayTimer = system.registers[xAddr]
 	case 0x18: // LD ST, Vx
-		system.soundTimer = system.registers[x_addr]
+		system.soundTimer = system.registers[xAddr]
 	case 0x1E: // ADD I, Vx
-		system.addToIReg(x_addr)
+		system.addToIReg(xAddr)
 	case 0x29: // LD F, Vx
-		system.setFontLoc(x_addr)
+		system.setFontLoc(xAddr)
 	case 0x33: // LD B, Vx
-		system.storeBCD(x_addr)
+		system.storeBCD(xAddr)
 	case 0x55: // LD [I], Vx
-		system.storeReg(x_addr)
+		system.storeReg(xAddr)
 	case 0x65: // LD Vx, [I]
-		system.loadReg(x_addr)
+		system.loadReg(xAddr)
 	default:
 		{
 			fmt.Printf("Unknown arithmetic instruction: %x\n", instType)
@@ -358,46 +358,46 @@ func (system *System) decodeF(instType, x_addr byte) {
 }
 
 func (system *System) ret() {
-	old_pc, err := system.call_stack.Pop()
+	oldPC, err := system.callStack.Pop()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	system.pc = old_pc
+	system.pc = oldPC
 }
 
 func (system *System) call(addr uint16) {
-	system.call_stack.Push(system.pc)
+	system.callStack.Push(system.pc)
 	system.pc = addr
 }
 
-func (system *System) skip_equal(x_addr, y_addr byte) {
-	if system.registers[x_addr] == system.registers[y_addr] {
+func (system *System) skipEqual(xAddr, yAddr byte) {
+	if system.registers[xAddr] == system.registers[yAddr] {
 		system.pc += 2
 	}
 }
 
-func (system *System) skip_not_equal(x_addr, y_addr byte) {
-	if system.registers[x_addr] != system.registers[y_addr] {
+func (system *System) skipNotEqual(xAddr, yAddr byte) {
+	if system.registers[xAddr] != system.registers[yAddr] {
 		system.pc += 2
 	}
 }
 
-func (system *System) skip_equal_im(x_addr, val byte) {
-	if system.registers[x_addr] == val {
+func (system *System) skipEqualImm(xAddr, val byte) {
+	if system.registers[xAddr] == val {
 		system.pc += 2
 	}
 }
 
-func (system *System) skip_not_equal_im(x_addr, val byte) {
-	if system.registers[x_addr] != val {
+func (system *System) skipNotEqualImm(xAddr, val byte) {
+	if system.registers[xAddr] != val {
 		system.pc += 2
 	}
 }
 
-func (system *System) add(x_addr, y_addr byte) {
-	result := uint16(system.registers[x_addr]) + uint16(system.registers[y_addr])
-	system.registers[x_addr] = byte(result)
+func (system *System) add(xAddr, yAddr byte) {
+	result := uint16(system.registers[xAddr]) + uint16(system.registers[yAddr])
+	system.registers[xAddr] = byte(result)
 	if result > 255 {
 		system.registers[0xF] = 1
 	} else {
@@ -405,10 +405,10 @@ func (system *System) add(x_addr, y_addr byte) {
 	}
 }
 
-func (system *System) sub(x_addr, y_addr byte) {
-	x := system.registers[x_addr]
-	y := system.registers[y_addr]
-	system.registers[x_addr] = x - y
+func (system *System) sub(xAddr, yAddr byte) {
+	x := system.registers[xAddr]
+	y := system.registers[yAddr]
+	system.registers[xAddr] = x - y
 	if x >= y {
 		system.registers[0xF] = 1
 	} else {
@@ -416,10 +416,10 @@ func (system *System) sub(x_addr, y_addr byte) {
 	}
 }
 
-func (system *System) subn(x_addr, y_addr byte) {
-	x := system.registers[x_addr]
-	y := system.registers[y_addr]
-	system.registers[x_addr] = y - x
+func (system *System) subn(xAddr, yAddr byte) {
+	x := system.registers[xAddr]
+	y := system.registers[yAddr]
+	system.registers[xAddr] = y - x
 	if y >= x {
 		system.registers[0xF] = 1
 	} else {
@@ -428,9 +428,9 @@ func (system *System) subn(x_addr, y_addr byte) {
 }
 
 // TODO: make shifts configurable (use Vy or not)
-func (system *System) shr(x_addr byte) {
-	x := system.registers[x_addr]
-	system.registers[x_addr] >>= 1
+func (system *System) shr(xAddr byte) {
+	x := system.registers[xAddr]
+	system.registers[xAddr] >>= 1
 	if x&1 == 1 {
 		system.registers[0xF] = 1
 	} else {
@@ -438,9 +438,9 @@ func (system *System) shr(x_addr byte) {
 	}
 }
 
-func (system *System) shl(x_addr byte) {
-	x := system.registers[x_addr]
-	system.registers[x_addr] <<= 1
+func (system *System) shl(xAddr byte) {
+	x := system.registers[xAddr]
+	system.registers[xAddr] <<= 1
 	if (x>>7)&1 == 1 {
 		system.registers[0xF] = 1
 	} else {
@@ -448,14 +448,14 @@ func (system *System) shl(x_addr byte) {
 	}
 }
 
-func (system *System) drw(x_addr, y_addr, n byte) {
+func (system *System) drw(xAddr, yAddr, n byte) {
 	sprite := system.memory[system.iReg : system.iReg+uint16(n)]
 
-	pos_x := system.registers[x_addr]
-	pos_y := system.registers[y_addr]
+	posX := system.registers[xAddr]
+	posY := system.registers[yAddr]
 
 	system.registers[0xF] = 0
-	collision, err := system.display.DrawSprite(sprite, pos_x, pos_y, n)
+	collision, err := system.display.DrawSprite(sprite, posX, posY, n)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -466,25 +466,25 @@ func (system *System) drw(x_addr, y_addr, n byte) {
 	}
 }
 
-func (system *System) skip_pressed(x_addr byte) {
-	if system.keyState[system.registers[x_addr]] {
+func (system *System) skipPressed(xAddr byte) {
+	if system.keyState[system.registers[xAddr]] {
 		system.pc += 2
 	}
 }
 
-func (system *System) skip_not_pressed(x_addr byte) {
-	if !system.keyState[system.registers[x_addr]] {
+func (system *System) skipNotPressed(xAddr byte) {
+	if !system.keyState[system.registers[xAddr]] {
 		system.pc += 2
 	}
 }
 
-func (system *System) get_key(x_addr byte) {
+func (system *System) getKey(xAddr byte) {
 	key, pressed := system.getPressedKey()
 
 	if system.waitingForRelease {
 		if !pressed || key != system.lastPressedKey {
 			system.waitingForRelease = false
-			system.registers[x_addr] = key
+			system.registers[xAddr] = key
 			return
 		}
 	} else {
@@ -506,8 +506,8 @@ func (system *System) getPressedKey() (byte, bool) {
 	return 0, false
 }
 
-func (system *System) addToIReg(x_addr byte) {
-	result := system.iReg + uint16(system.registers[x_addr])
+func (system *System) addToIReg(xAddr byte) {
+	result := system.iReg + uint16(system.registers[xAddr])
 	system.iReg = result
 	if result > 0x0FFF { // only left-most 12 bits are used
 		system.registers[0xF] = 1
@@ -516,14 +516,14 @@ func (system *System) addToIReg(x_addr byte) {
 	}
 }
 
-func (system *System) setFontLoc(x_addr byte) {
-	char := system.registers[x_addr] & 0x0F
+func (system *System) setFontLoc(xAddr byte) {
+	char := system.registers[xAddr] & 0x0F
 	pos := fontStartAddr + uint16(char*5)
 	system.iReg = pos
 }
 
-func (system *System) storeBCD(x_addr byte) {
-	num := system.registers[x_addr]
+func (system *System) storeBCD(xAddr byte) {
+	num := system.registers[xAddr]
 	system.memory[system.iReg] = num / 100
 	system.memory[system.iReg+1] = (num % 100) / 10
 	system.memory[system.iReg+2] = num % 10

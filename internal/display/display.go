@@ -42,27 +42,27 @@ func (d *Display) ClearScreen() {
 	}
 }
 
-func (d *Display) DrawSprite(sprite []byte, pos_x, pos_y, n byte) (collision bool, err error) {
+func (d *Display) DrawSprite(sprite []byte, posX, posY, n byte) (collision bool, err error) {
 	collision = false
 
 	// wrap coordinates
-	pos_x = pos_x % width
-	pos_y = pos_y % height
+	posX = posX % width
+	posY = posY % height
 
 	for i := range n {
-		if pos_y+i >= height {
+		if posY+i >= height {
 			break
 		}
 
 		line := sprite[i]
 		for j := range byte(8) {
-			if pos_x+j >= width {
+			if posX+j >= width {
 				break
 			}
 
 			fill := (line>>(7-j))&1 == 1
 
-			if d.setCell(fill, pos_x+j, pos_y+i) {
+			if d.setCell(fill, posX+j, posY+i) {
 				collision = true
 			}
 		}
