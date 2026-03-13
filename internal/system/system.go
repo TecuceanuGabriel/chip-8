@@ -72,7 +72,7 @@ type System struct {
 
 	isPaused bool
 
-	debug *debugState
+	debug *debugSession
 }
 
 // CreateSystem allocates and initialises a new System, loading romPath into
@@ -97,7 +97,7 @@ func CreateSystem(romPath string, debugMode bool) (system *System) {
 
 	if debugMode {
 		system.isPaused = true
-		system.debug = &debugState{
+		system.debug = &debugSession{
 			breakpoints: make(map[uint16]bool),
 			debugChan:   make(chan DebugCmd),
 			eventChan:   make(chan DebugEvent),

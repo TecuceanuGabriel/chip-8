@@ -46,9 +46,9 @@ type EventStep struct{ PC uint16 }
 func (EventBreakpoint) debugEvent() {}
 func (EventStep) debugEvent()       {}
 
-// debugState holds breakpoints, step counters, and the channels used to
+// debugSession holds breakpoints, step counters, and the channels used to
 // communicate between the debugger goroutine and the game loop.
-type debugState struct {
+type debugSession struct {
 	breakpoints map[uint16]bool
 	stepMode    bool
 	stepsLeft   int
