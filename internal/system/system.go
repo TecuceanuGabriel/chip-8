@@ -71,11 +71,13 @@ type System struct {
 	isBeeping      bool
 
 	isPaused bool
+
+	debug *debugState 
 }
 
-// CreateSystem allocates and initialises a new System, loading the ROM from
-// os.Args[1] into memory at 0x200 and setting up the audio subsystem.
-func CreateSystem() (system *System) {
+// CreateSystem allocates and initialises a new System, loading romPath into
+// memory at 0x200. Audio is muted when debugMode is true.
+func CreateSystem(romPath string, debugMode bool) (system *System) {
 	system = &System{
 		memory:    make([]byte, memorySize),
 		pc:        firstInstructionAdd,
@@ -85,8 +87,6 @@ func CreateSystem() (system *System) {
 
 	copy(system.memory[fontStartAddr:], font)
 
-	romPath := os.Args[1]
-
 	rom, err := os.ReadFile(romPath)
 	if err != nil {
 		fmt.Printf("Failed to load rom: %v\n", romPath)
@@ -95,10 +95,18 @@ func CreateSystem() (system *System) {
 
 	copy(system.memory[firstInstructionAdd:], rom)
 
-	system.beepSampleRate = beep.SampleRate(44100)
-	err = speaker.Init(system.beepSampleRate, system.beepSampleRate.N(time.Second/10))
-	if err != nil {
-		fmt.Printf("Failed to initialize audio: %v\n", err)
+	if debugMode {
+		system.debug = &debugState{
+			breakpoints: make(map[uint16]bool),
+			debugChan:   make(chan DebugCmd),
+			eventChan:   make(chan DebugEvent),
+		}
+	} else {
+		system.beepSampleRate = beep.SampleRate(44100)
+		err = speaker.Init(system.beepSampleRate, system.beepSampleRate.N(time.Second/10))
+		if err != nil {
+			fmt.Printf("Failed to initialize audio: %v\n", err)
+		}
 	}
 
 	return system
