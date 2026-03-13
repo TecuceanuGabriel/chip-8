@@ -48,6 +48,8 @@ const (
 	nrInstPerFrame = 10
 )
 
+// System holds the full state of the CHIP-8 virtual machine: memory, registers,
+// timers, display, audio, and input.
 type System struct {
 	memory    []byte
 	pc        uint16
@@ -71,6 +73,8 @@ type System struct {
 	isPaused bool
 }
 
+// CreateSystem allocates and initialises a new System, loading the ROM from
+// os.Args[1] into memory at 0x200 and setting up the audio subsystem.
 func CreateSystem() (system *System) {
 	system = &System{
 		memory:    make([]byte, memorySize),
@@ -100,6 +104,8 @@ func CreateSystem() (system *System) {
 	return system
 }
 
+// Run is the main game loop. It must be called from the OS main thread via
+// pixelgl.Run because it owns the OpenGL window.
 func (system *System) Run() {
 	display, err := display.NewDisplay()
 	if err != nil {
@@ -228,12 +234,15 @@ func loadKeymap() (keymap map[byte]byte) {
 	return keymap
 }
 
+// Fetch reads the two-byte instruction at PC and advances PC by 2.
 func (system *System) Fetch() (instruction []byte) {
 	instruction = system.memory[system.pc : system.pc+2]
 	system.pc += 2
 	return instruction
 }
 
+// Decode executes the two-byte CHIP-8 instruction. Returns an error for unknown
+// opcodes (the caller typically exits on error).
 func (system *System) Decode(instruction []byte) error {
 	firstByte := instruction[0]
 	secondByte := instruction[1]

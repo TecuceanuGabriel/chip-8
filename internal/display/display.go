@@ -13,11 +13,13 @@ const (
 	scale  = 20
 )
 
+// Display wraps a pixel window and manages the 64×32 monochrome pixel buffer.
 type Display struct {
 	pixels [width * height]bool
 	win    *pixelgl.Window
 }
 
+// NewDisplay opens the application window and returns a ready-to-use Display.
 func NewDisplay() (*Display, error) {
 	cfg := pixelgl.WindowConfig{
 		Title:  "CHIPY",
@@ -35,6 +37,7 @@ func NewDisplay() (*Display, error) {
 	}, nil
 }
 
+// ClearScreen blanks the window and resets all pixels to off.
 func (d *Display) ClearScreen() {
 	d.win.Clear(colornames.Black)
 	for idx := range d.pixels {
@@ -42,6 +45,8 @@ func (d *Display) ClearScreen() {
 	}
 }
 
+// DrawSprite XOR-blits an n-row sprite at (posX, posY), wrapping at screen
+// edges. Returns true if any pixel was toggled from on to off (collision).
 func (d *Display) DrawSprite(sprite []byte, posX, posY, n byte) (collision bool, err error) {
 	collision = false
 
@@ -111,6 +116,8 @@ func getIdx(x, y byte) uint16 {
 	return uint16(x) + uint16(y)*width
 }
 
+// GetWindow returns the underlying pixel window, used by the system for input
+// polling and window-close detection.
 func (d *Display) GetWindow() *pixelgl.Window {
 	return d.win
 }
