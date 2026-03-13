@@ -21,9 +21,33 @@ const contextLines = 5 // instructions shown around PC on each pause
 // Start runs the debugger REPL. It is intended to be called as a goroutine
 // before pixelgl.Run so it runs concurrently with the game loop.
 func Start(sys *system.System) {
+	keyItems := make([]readline.PrefixCompleterInterface, 16)
+	for i := range 16 {
+		keyItems[i] = readline.PcItem(fmt.Sprintf("%X", i))
+	}
+
+	completer := readline.NewPrefixCompleter(
+		readline.PcItem("step"),
+		readline.PcItem("continue"),
+		readline.PcItem("audio"),
+		readline.PcItem("reset"),
+		readline.PcItem("quit"),
+		readline.PcItem("b"),
+		readline.PcItem("rb"),
+		readline.PcItem("lb"),
+		readline.PcItem("regs"),
+		readline.PcItem("mem"),
+		readline.PcItem("timers"),
+		readline.PcItem("keys"),
+		readline.PcItem("dis"),
+		readline.PcItem("press", keyItems...),
+		readline.PcItem("release", keyItems...),
+	)
+
 	rl, err := readline.NewEx(&readline.Config{
-		Prompt:      "(dbg) ",
-		HistoryFile: "/tmp/chip8_debug_history",
+		Prompt:       "(dbg) ",
+		HistoryFile:  "/tmp/chip8_debug_history",
+		AutoComplete: completer,
 	})
 	if err != nil {
 		fmt.Printf("debugger: failed to init readline: %v\n", err)
