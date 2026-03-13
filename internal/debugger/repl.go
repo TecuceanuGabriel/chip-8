@@ -42,6 +42,7 @@ func Start(sys *system.System) {
 		readline.PcItem("dis"),
 		readline.PcItem("press", keyItems...),
 		readline.PcItem("release", keyItems...),
+		readline.PcItem("help"),
 	)
 
 	rl, err := readline.NewEx(&readline.Config{
@@ -208,9 +209,11 @@ func Start(sys *system.System) {
 			}
 			printDis(sys, sys.PC(), n)
 
+		case "help", "h":
+			printHelp()
+
 		default:
-			fmt.Printf("unknown command %q\n", parts[0])
-			fmt.Println("commands: step [N], continue, quit, b/rb/lb, regs, mem, timers, keys, dis [N], press/release <key>")
+			fmt.Printf("unknown command %q — type 'help' for a list of commands\n", parts[0])
 		}
 	}
 }
@@ -384,6 +387,37 @@ func printMem(sys *system.System, addr uint16, n int) {
 	}
 	if len(mem)%16 != 0 {
 		fmt.Println()
+	}
+	fmt.Println()
+}
+
+func printHelp() {
+	type entry struct{ cmd, args, desc string }
+	rows := []entry{
+		{"step / s", "[N]", "execute N instructions then pause"},
+		{"continue / c", "", "run until next breakpoint"},
+		{"b", "0xADDR", "set breakpoint"},
+		{"rb", "0xADDR", "remove breakpoint"},
+		{"lb", "", "list breakpoints"},
+		{"regs / r", "", "show registers"},
+		{"mem / m", "0xADDR [N]", "dump N bytes of memory"},
+		{"timers / t", "", "show delay and sound timers"},
+		{"keys / k", "", "show key pad state"},
+		{"dis / d", "[N]", "disassemble N instructions from PC"},
+		{"press", "<0-F>", "inject key press"},
+		{"release", "<0-F>", "inject key release"},
+		{"audio", "", "toggle audio mute"},
+		{"reset", "", "reload ROM and reset VM state"},
+		{"help / h", "", "show this help"},
+		{"quit / q", "", "exit"},
+	}
+
+	cmdW, argsW := 16, 14
+	fmt.Println()
+	fmt.Printf("  %-*s  %-*s  %s\n", cmdW, "command", argsW, "args", "description")
+	fmt.Printf("  %s  %s  %s\n", strings.Repeat("─", cmdW), strings.Repeat("─", argsW), strings.Repeat("─", 35))
+	for _, r := range rows {
+		fmt.Printf("  %-*s  %-*s  %s\n", cmdW, r.cmd, argsW, r.args, r.desc)
 	}
 	fmt.Println()
 }
