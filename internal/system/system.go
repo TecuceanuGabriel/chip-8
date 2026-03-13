@@ -48,6 +48,8 @@ const (
 	nrInstPerFrame = 10
 )
 
+// System holds the full state of the CHIP-8 virtual machine: memory, registers,
+// timers, display, audio, and input.
 type System struct {
 	memory    []byte
 	pc        uint16
@@ -69,9 +71,13 @@ type System struct {
 	isBeeping      bool
 
 	isPaused bool
+
+	debug *debugSession
 }
 
-func CreateSystem() (system *System) {
+// CreateSystem allocates and initialises a new System, loading romPath into
+// memory at 0x200. Audio is muted when debugMode is true.
+func CreateSystem(romPath string, debugMode bool) (system *System) {
 	system = &System{
 		memory:    make([]byte, memorySize),
 		pc:        firstInstructionAdd,
@@ -81,8 +87,6 @@ func CreateSystem() (system *System) {
 
 	copy(system.memory[fontStartAddr:], font)
 
-	romPath := os.Args[1]
-
 	rom, err := os.ReadFile(romPath)
 	if err != nil {
 		fmt.Printf("Failed to load rom: %v\n", romPath)
@@ -91,15 +95,26 @@ func CreateSystem() (system *System) {
 
 	copy(system.memory[firstInstructionAdd:], rom)
 
-	system.beepSampleRate = beep.SampleRate(44100)
-	err = speaker.Init(system.beepSampleRate, system.beepSampleRate.N(time.Second/10))
-	if err != nil {
-		fmt.Printf("Failed to initialize audio: %v\n", err)
+	if debugMode {
+		system.isPaused = true
+		system.debug = &debugSession{
+			breakpoints: make(map[uint16]bool),
+			debugChan:   make(chan DebugCmd),
+			eventChan:   make(chan DebugEvent),
+		}
+	} else {
+		system.beepSampleRate = beep.SampleRate(44100)
+		err = speaker.Init(system.beepSampleRate, system.beepSampleRate.N(time.Second/10))
+		if err != nil {
+			fmt.Printf("Failed to initialize audio: %v\n", err)
+		}
 	}
 
 	return system
 }
 
+// Run is the main game loop. It must be called from the OS main thread via
+// pixelgl.Run because it owns the OpenGL window.
 func (system *System) Run() {
 	display, err := display.NewDisplay()
 	if err != nil {
@@ -124,35 +139,48 @@ func (system *System) Run() {
 				break
 			}
 
-			if system.isPaused {
-				fmt.Println("paused")
-				continue
-			}
-
-			for range nrInstPerFrame {
-				instruction := system.Fetch()
-
-				err := system.Decode(instruction)
-				if err != nil {
-					fmt.Println(err)
-					os.Exit(1)
+			if system.debug != nil {
+				system.runDebugFrame()
+			} else {
+				if system.isPaused {
+					continue
 				}
+				for range nrInstPerFrame {
+					system.execInstruction()
+				}
+				system.updateTimers()
 			}
-			system.updateTimers()
 		}
+	}
+}
+
+func (system *System) execInstruction() {
+	instruction := system.Fetch()
+	err := system.Decode(instruction)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
 
 func (system *System) handleInput() bool {
 	win := system.display.GetWindow()
 
-	if win.Pressed(pixelgl.KeySpace) {
-		system.isPaused = !system.isPaused
-		return false
-	}
-
 	if win.Pressed(pixelgl.KeyEscape) {
 		return true
+	}
+
+	if win.Pressed(pixelgl.KeySpace) {
+		if system.debug != nil {
+			// in debug mode space breaks into the debugger.
+			if !system.isPaused {
+				system.isPaused = true
+				system.debug.eventChan <- EventStep{PC: system.pc}
+			}
+		} else {
+			system.isPaused = !system.isPaused
+		}
+		return false
 	}
 
 	for key := range system.keymap {
@@ -228,12 +256,15 @@ func loadKeymap() (keymap map[byte]byte) {
 	return keymap
 }
 
+// Fetch reads the two-byte instruction at PC and advances PC by 2.
 func (system *System) Fetch() (instruction []byte) {
 	instruction = system.memory[system.pc : system.pc+2]
 	system.pc += 2
 	return instruction
 }
 
+// Decode executes the two-byte CHIP-8 instruction. Returns an error for unknown
+// opcodes (the caller typically exits on error).
 func (system *System) Decode(instruction []byte) error {
 	firstByte := instruction[0]
 	secondByte := instruction[1]
@@ -545,3 +576,53 @@ func (system *System) loadReg(x byte) {
 		system.registers[idx] = system.memory[base+uint16(idx)]
 	}
 }
+
+// --- Read-only accessors used by the debugger ---
+
+// PC returns the current program counter.
+func (s *System) PC() uint16 { return s.pc }
+
+// IReg returns the current value of the I register.
+func (s *System) IReg() uint16 { return s.iReg }
+
+// Registers returns a copy of the 16 general-purpose registers.
+func (s *System) Registers() [16]byte {
+	var regs [16]byte
+	copy(regs[:], s.registers)
+	return regs
+}
+
+// MemorySlice returns a copy of n bytes of memory starting at addr.
+func (s *System) MemorySlice(addr uint16, n int) []byte {
+	end := int(addr) + n
+	if end > len(s.memory) {
+		end = len(s.memory)
+	}
+	out := make([]byte, end-int(addr))
+	copy(out, s.memory[addr:end])
+	return out
+}
+
+// DelayTimer returns the current delay timer value.
+func (s *System) DelayTimer() byte { return s.delayTimer }
+
+// SoundTimer returns the current sound timer value.
+func (s *System) SoundTimer() byte { return s.soundTimer }
+
+// KeyState returns the current state of all 16 keys.
+func (s *System) KeyState() [16]bool { return s.keyState }
+
+// Breakpoints returns the list of currently set breakpoint addresses.
+func (s *System) Breakpoints() []uint16 {
+	addrs := make([]uint16, 0, len(s.debug.breakpoints))
+	for addr := range s.debug.breakpoints {
+		addrs = append(addrs, addr)
+	}
+	return addrs
+}
+
+// DebugChan returns the channel the debugger should send commands on.
+func (s *System) DebugChan() chan<- DebugCmd { return s.debug.debugChan }
+
+// EventChan returns the channel the debugger should receive events from.
+func (s *System) EventChan() <-chan DebugEvent { return s.debug.eventChan }
