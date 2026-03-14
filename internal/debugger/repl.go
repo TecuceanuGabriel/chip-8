@@ -11,8 +11,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/TecuceanuGabriel/chip-8/internal/disasm"
-	"github.com/TecuceanuGabriel/chip-8/internal/system"
+	"github.com/TecuceanuGabriel/g8dbg/internal/disasm"
+	"github.com/TecuceanuGabriel/g8dbg/internal/system"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/chzyer/readline"
 	"golang.org/x/term"

@@ -1,4 +1,4 @@
-module github.com/TecuceanuGabriel/chip-8
+module github.com/TecuceanuGabriel/g8dbg
 
 go 1.25.0
 

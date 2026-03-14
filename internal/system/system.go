@@ -3,8 +3,8 @@ package system
 
 import (
 	"fmt"
-	"github.com/TecuceanuGabriel/chip-8/internal/display"
-	"github.com/TecuceanuGabriel/chip-8/internal/stack"
+	"github.com/TecuceanuGabriel/g8dbg/internal/display"
+	"github.com/TecuceanuGabriel/g8dbg/internal/stack"
 	"math"
 	"math/rand/v2"
 	"os"

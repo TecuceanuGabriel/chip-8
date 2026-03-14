@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/TecuceanuGabriel/chip-8/internal/debugger"
-	"github.com/TecuceanuGabriel/chip-8/internal/system"
+	"github.com/TecuceanuGabriel/g8dbg/internal/debugger"
+	"github.com/TecuceanuGabriel/g8dbg/internal/system"
 
 	"github.com/gopxl/pixel/pixelgl"
 )
