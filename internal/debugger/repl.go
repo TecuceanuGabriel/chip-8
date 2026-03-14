@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	contextLines  = 19 // total instructions shown in context view
+	contextLines  = 17 // total instructions shown in context view
 	contextBefore = 2  // instructions shown above PC (dimmed)
 )
 
@@ -332,25 +332,26 @@ func disasmBlock(sys *system.System) string {
 func regsBlock(sys *system.System) string {
 	regs := sys.Registers()
 	var sb strings.Builder
-	for i := range 16 {
+	for i := range 8 {
 		if i > 0 {
 			sb.WriteByte('\n')
 		}
-		val := regValColor.Render(fmt.Sprintf("0x%02X", regs[i]))
-		fmt.Fprintf(&sb, "V%-1X = %s (%3d)", i, val, regs[i])
+		val0 := regValColor.Render(fmt.Sprintf("0x%02X", regs[i]))
+		val8 := regValColor.Render(fmt.Sprintf("0x%02X", regs[i+8]))
+		fmt.Fprintf(&sb, "V%-1X = %s (%3d)   V%-1X = %s (%3d)", i, val0, regs[i], i+8, val8, regs[i+8])
 	}
-	fmt.Fprintf(&sb, "\nPC = %s   I  = %s",
+	fmt.Fprintf(&sb, "\n\n\nPC = %s   I  = %s",
 		addrColor.Render(fmt.Sprintf("0x%03X", sys.PC())),
 		addrColor.Render(fmt.Sprintf("0x%03X", sys.IReg())),
 	)
-	fmt.Fprintf(&sb, "\nDT = %s   ST = %s",
+	fmt.Fprintf(&sb, "\n\n\nDT = %s   ST = %s",
 		regValColor.Render(fmt.Sprintf("%-5d", sys.DelayTimer())),
 		regValColor.Render(fmt.Sprintf("%-5d", sys.SoundTimer())),
 	)
 	if sys.AudioMuted() {
-		fmt.Fprintf(&sb, "\n%s", lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render("audio off"))
+		fmt.Fprintf(&sb, "\n\n\n%s", lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render("audio off"))
 	} else {
-		fmt.Fprintf(&sb, "\n%s", lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render("audio on"))
+		fmt.Fprintf(&sb, "\n\n\n%s", lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render("audio on"))
 	}
 	return sb.String()
 }
