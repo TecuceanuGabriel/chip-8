@@ -16,7 +16,10 @@ import (
 	"golang.org/x/term"
 )
 
-const contextLines = 5 // instructions shown around PC on each pause
+const (
+	contextLines  = 19 // total instructions shown in context view
+	contextBefore = 2  // instructions shown above PC (dimmed)
+)
 
 // Start runs the debugger REPL. It is intended to be called as a goroutine
 // before pixelgl.Run so it runs concurrently with the game loop.
@@ -256,6 +259,7 @@ var (
 	regValColor = lipgloss.NewStyle().Foreground(lipgloss.Color("10")) // green
 	keyOnStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
 	keyOffStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("240")) // dimmed past instructions
 )
 
 func printContext(sys *system.System) {
@@ -276,9 +280,17 @@ func printContext(sys *system.System) {
 
 func disasmBlock(sys *system.System) string {
 	pc := sys.PC()
+
+	var startAddr uint16
+	if pc >= 0x200+uint16(contextBefore)*2 {
+		startAddr = pc - uint16(contextBefore)*2
+	} else {
+		startAddr = 0x200
+	}
+
 	var sb strings.Builder
 	for i := range contextLines {
-		addr := pc + uint16(i*2)
+		addr := startAddr + uint16(i*2)
 		mem := sys.MemorySlice(addr, 2)
 		if len(mem) < 2 {
 			break
@@ -286,17 +298,32 @@ func disasmBlock(sys *system.System) string {
 		if i > 0 {
 			sb.WriteByte('\n')
 		}
+
+		past := addr < pc
+		idx := (addr-0x200)/2 + 1
+		parts := strings.SplitN(disasm.Disassemble(mem), " ", 2)
+
+		var addrStr, mnemStr string
+		if past {
+			addrStr = dimStyle.Render(fmt.Sprintf("0x%03X", addr))
+			mnemStr = dimStyle.Render(parts[0])
+		} else {
+			addrStr = addrColor.Render(fmt.Sprintf("0x%03X", addr))
+			mnemStr = mnemoColor.Render(parts[0])
+		}
+
 		if addr == pc {
 			sb.WriteString(arrowStyle.Render("→ "))
 		} else {
 			sb.WriteString("  ")
 		}
-		idx := (addr-0x200)/2 + 1
-		parts := strings.SplitN(disasm.Disassemble(mem), " ", 2)
-		sb.WriteString(addrColor.Render(fmt.Sprintf("0x%03X", addr)) + fmt.Sprintf(" (%-4d)  ", idx))
-		sb.WriteString(mnemoColor.Render(parts[0]))
+		fmt.Fprintf(&sb, "%s (%-4d)  %s", addrStr, idx, mnemStr)
 		if len(parts) > 1 {
-			sb.WriteString(" " + parts[1])
+			if past {
+				sb.WriteString(dimStyle.Render(" " + parts[1]))
+			} else {
+				sb.WriteString(" " + parts[1])
+			}
 		}
 	}
 	return sb.String()
