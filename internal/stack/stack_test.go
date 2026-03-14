@@ -41,9 +41,9 @@ func TestMultiplePushPos(t *testing.T) {
 
 	s.Push(1)
 	s.Push(2)
-	s.Pop()
+	_, _ = s.Pop()
 	s.Push(3)
-	s.Pop()
+	_, _ = s.Pop()
 
 	top, err := s.Pop()
 
