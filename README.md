@@ -2,10 +2,10 @@
 
 # g8dbg
 
-[![CI](https://github.com/TecuceanuGabriel/g8dbg/actions/workflows/ci.yml/badge.svg)](https://github.com/TecuceanuGabriel/g8dbg/actions)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/TecuceanuGabriel/g8dbg)](go.mod)
-[![Go Report Card](https://goreportcard.com/badge/github.com/TecuceanuGabriel/g8dbg)](https://goreportcard.com/report/github.com/TecuceanuGabriel/g8dbg)
-[![License](https://img.shields.io/github/license/TecuceanuGabriel/g8dbg)](LICENSE)
+[![CI](https://github.com/GabrielTecuceanu/g8dbg/actions/workflows/ci.yml/badge.svg)](https://github.com/GabrielTecuceanu/g8dbg/actions)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/GabrielTecuceanu/g8dbg)](go.mod)
+[![Go Report Card](https://goreportcard.com/badge/github.com/GabrielTecuceanu/g8dbg)](https://goreportcard.com/report/github.com/GabrielTecuceanu/g8dbg)
+[![License](https://img.shields.io/github/license/GabrielTecuceanu/g8dbg)](LICENSE)
 
 a CHIP-8 debugger written in go
 
@@ -38,13 +38,13 @@ sudo pacman -S alsa-lib mesa libxrandr libxcursor libxi libxinerama
 Install:
 
 ```bash
-go install github.com/TecuceanuGabriel/g8dbg@latest
+go install github.com/GabrielTecuceanu/g8dbg@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/TecuceanuGabriel/g8dbg
+git clone https://github.com/GabrielTecuceanu/g8dbg
 cd g8dbg
 go build -o g8dbg
 ```
