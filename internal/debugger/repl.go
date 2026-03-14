@@ -291,8 +291,9 @@ func disasmBlock(sys *system.System) string {
 		} else {
 			sb.WriteString("  ")
 		}
+		idx := (addr-0x200)/2 + 1
 		parts := strings.SplitN(disasm.Disassemble(mem), " ", 2)
-		sb.WriteString(addrColor.Render(fmt.Sprintf("0x%03X", addr)) + "  ")
+		sb.WriteString(addrColor.Render(fmt.Sprintf("0x%03X", addr)) + fmt.Sprintf(" (%-4d)  ", idx))
 		sb.WriteString(mnemoColor.Render(parts[0]))
 		if len(parts) > 1 {
 			sb.WriteString(" " + parts[1])
@@ -308,18 +309,21 @@ func regsBlock(sys *system.System) string {
 		if i > 0 {
 			sb.WriteByte('\n')
 		}
-		label := fmt.Sprintf("V%X", i)
 		val := regValColor.Render(fmt.Sprintf("0x%02X", regs[i]))
-		sb.WriteString(fmt.Sprintf("%-2s = %s (%3d)", label, val, regs[i]))
+		fmt.Fprintf(&sb, "V%-1X = %s (%3d)", i, val, regs[i])
 	}
-	sb.WriteString("\n" + fmt.Sprintf("PC = %s", addrColor.Render(fmt.Sprintf("0x%03X", sys.PC()))))
-	sb.WriteString("   " + fmt.Sprintf("I  = %s", addrColor.Render(fmt.Sprintf("0x%03X", sys.IReg()))))
-	sb.WriteString("\n" + fmt.Sprintf("DT = %s", regValColor.Render(fmt.Sprintf("%-3d", sys.DelayTimer()))))
-	sb.WriteString("   " + fmt.Sprintf("ST = %s", regValColor.Render(fmt.Sprintf("%-3d", sys.SoundTimer()))))
+	fmt.Fprintf(&sb, "\nPC = %s   I  = %s",
+		addrColor.Render(fmt.Sprintf("0x%03X", sys.PC())),
+		addrColor.Render(fmt.Sprintf("0x%03X", sys.IReg())),
+	)
+	fmt.Fprintf(&sb, "\nDT = %s   ST = %s",
+		regValColor.Render(fmt.Sprintf("%-5d", sys.DelayTimer())),
+		regValColor.Render(fmt.Sprintf("%-5d", sys.SoundTimer())),
+	)
 	if sys.AudioMuted() {
-		sb.WriteString("\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render("audio off"))
+		fmt.Fprintf(&sb, "\n%s", lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render("audio off"))
 	} else {
-		sb.WriteString("\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render("audio on"))
+		fmt.Fprintf(&sb, "\n%s", lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render("audio on"))
 	}
 	return sb.String()
 }
@@ -358,13 +362,14 @@ func printDis(sys *system.System, pc uint16, n int) {
 		} else {
 			marker = "  "
 		}
+		idx := (addr-0x200)/2 + 1
 		parts := strings.SplitN(disasm.Disassemble(mem), " ", 2)
 		mnemonic := mnemoColor.Render(parts[0])
 		args := ""
 		if len(parts) > 1 {
 			args = " " + parts[1]
 		}
-		fmt.Printf("%s%s  %s%s\n", marker, addrColor.Render(fmt.Sprintf("0x%03X", addr)), mnemonic, args)
+		fmt.Printf("%s%s (%d)  %s%s\n", marker, addrColor.Render(fmt.Sprintf("0x%03X", addr)), idx, mnemonic, args)
 	}
 	fmt.Println()
 }
