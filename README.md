@@ -1,6 +1,17 @@
+<div align="center">
+
 # g8dbg
 
-A CHIP-8 debugger written in Go.
+[![CI](https://github.com/TecuceanuGabriel/g8dbg/actions/workflows/ci.yml/badge.svg)](https://github.com/TecuceanuGabriel/g8dbg/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/TecuceanuGabriel/g8dbg)](https://goreportcard.com/report/github.com/TecuceanuGabriel/g8dbg)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/TecuceanuGabriel/g8dbg)](go.mod)
+[![License](https://img.shields.io/github/license/TecuceanuGabriel/g8dbg)](LICENSE)
+
+a CHIP-8 debugger written in go
+
+![demo](./assets/demo.gif)
+
+</div>
 
 ## Features
 
