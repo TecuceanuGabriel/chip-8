@@ -2,14 +2,12 @@ package system
 
 import (
 	"fmt"
+	"github.com/TecuceanuGabriel/chip-8/internal/display"
+	"github.com/TecuceanuGabriel/chip-8/internal/stack"
 	"math"
 	"math/rand/v2"
 	"os"
 	"time"
-	"unicode"
-
-	"github.com/TecuceanuGabriel/chip-8/internal/display"
-	"github.com/TecuceanuGabriel/chip-8/internal/stack"
 
 	"github.com/gopxl/beep"
 	"github.com/gopxl/beep/speaker"
@@ -41,8 +39,6 @@ const (
 	fontStartAddr       uint16 = 0x50
 )
 
-const keymapPath = "./KEYMAP"
-
 const (
 	targetFPS      = 60
 	nrInstPerFrame = 10
@@ -63,6 +59,7 @@ type System struct {
 	soundTimer byte
 	delayTimer byte
 
+	quirks            Quirks
 	keymap            map[byte]byte
 	keyState          [16]bool
 	waitingForRelease bool
@@ -80,12 +77,14 @@ type System struct {
 // CreateSystem allocates and initialises a new System, loading romPath into
 // memory at 0x200.
 func CreateSystem(romPath string) (system *System) {
+	keymap, quirks := loadConfig()
 	system = &System{
 		romPath:   romPath,
 		memory:    make([]byte, memorySize),
 		pc:        firstInstructionAdd,
 		registers: make([]byte, 16),
-		keymap:    loadKeymap(),
+		keymap:    keymap,
+		quirks:    quirks,
 		isPaused:  true,
 		debug: &debugSession{
 			breakpoints: make(map[uint16]bool),
@@ -213,34 +212,6 @@ func (system *System) stopBeep() {
 	system.isBeeping = false
 }
 
-func loadKeymap() (keymap map[byte]byte) {
-	file, err := os.ReadFile(keymapPath)
-	if err != nil {
-		fmt.Printf("Failed to load keymap: %v\n", keymapPath)
-	}
-
-	originalKeys := []byte{
-		1, 2, 3, 0xC,
-		4, 5, 6, 0xD,
-		7, 8, 9, 0xE,
-		0xA, 0, 0xB, 0xF,
-	}
-
-	keymap = make(map[byte]byte, 16)
-	var i int
-	for _, b := range file {
-		if b == '\n' {
-			continue
-		}
-
-		key := byte(unicode.ToUpper(rune(b)))
-		keymap[key] = originalKeys[i]
-		i++
-	}
-
-	return keymap
-}
-
 // Fetch reads the two-byte instruction at PC and advances PC by 2.
 func (system *System) Fetch() (instruction []byte) {
 	instruction = system.memory[system.pc : system.pc+2]
@@ -290,8 +261,12 @@ func (system *System) Decode(instruction []byte) error {
 		system.skipNotEqual(secondNibble, thirdNibble)
 	case 0xA: // LD I, addr
 		system.iReg = last3Nibbles
-	case 0xB: // JP V0, addr TODO: comp problem: make configurable?
-		system.pc = uint16(system.registers[0]) + last3Nibbles
+	case 0xB: // JP V0, addr  (or JP VX, XNN with JumpUsesVX quirk)
+		if system.quirks.JumpUsesVX {
+			system.pc = uint16(system.registers[secondNibble]) + last3Nibbles
+		} else {
+			system.pc = uint16(system.registers[0]) + last3Nibbles
+		}
 	case 0xC: // RND Vx, byte
 		system.registers[secondNibble] = byte(rand.UintN(256)) & secondByte
 	case 0xD: // DRW Vx, Vy, nibble
@@ -332,11 +307,11 @@ func (system *System) decodeArithmetic(instType, xAddr, yAddr byte) {
 	case 5: // SUB Vx, Vy
 		system.sub(xAddr, yAddr)
 	case 6: // SHR Vx {, Vy}
-		system.shr(xAddr)
+		system.shr(xAddr, yAddr)
 	case 7: // SUBN Vx, Vy
 		system.subn(xAddr, yAddr)
-	case 0xE: // AND Vx, Vy
-		system.shl(xAddr)
+	case 0xE: // SHL Vx {, Vy}
+		system.shl(xAddr, yAddr)
 	default:
 		{
 			fmt.Printf("Unknown arithmetic instruction: %x\n", instType)
@@ -443,25 +418,22 @@ func (system *System) subn(xAddr, yAddr byte) {
 	}
 }
 
-// TODO: make shifts configurable (use Vy or not)
-func (system *System) shr(xAddr byte) {
-	x := system.registers[xAddr]
-	system.registers[xAddr] >>= 1
-	if x&1 == 1 {
-		system.registers[0xF] = 1
-	} else {
-		system.registers[0xF] = 0
+func (system *System) shr(xAddr, yAddr byte) {
+	src := system.registers[xAddr]
+	if system.quirks.ShiftUsesVY {
+		src = system.registers[yAddr]
 	}
+	system.registers[xAddr] = src >> 1
+	system.registers[0xF] = src & 1
 }
 
-func (system *System) shl(xAddr byte) {
-	x := system.registers[xAddr]
-	system.registers[xAddr] <<= 1
-	if (x>>7)&1 == 1 {
-		system.registers[0xF] = 1
-	} else {
-		system.registers[0xF] = 0
+func (system *System) shl(xAddr, yAddr byte) {
+	src := system.registers[xAddr]
+	if system.quirks.ShiftUsesVY {
+		src = system.registers[yAddr]
 	}
+	system.registers[xAddr] = src << 1
+	system.registers[0xF] = (src >> 7) & 1
 }
 
 func (system *System) drw(xAddr, yAddr, n byte) {
@@ -545,20 +517,23 @@ func (system *System) storeBCD(xAddr byte) {
 	system.memory[system.iReg+2] = num % 10
 }
 
-// TODO: make iReg inc configurable for compat reasons
 func (system *System) storeReg(x byte) {
 	base := system.iReg
-	var idx byte
-	for idx = 0; idx <= x; idx++ {
+	for idx := byte(0); idx <= x; idx++ {
 		system.memory[base+uint16(idx)] = system.registers[idx]
+	}
+	if system.quirks.LoadStoreIncI {
+		system.iReg = base + uint16(x) + 1
 	}
 }
 
 func (system *System) loadReg(x byte) {
 	base := system.iReg
-	var idx byte
-	for idx = 0; idx <= x; idx++ {
+	for idx := byte(0); idx <= x; idx++ {
 		system.registers[idx] = system.memory[base+uint16(idx)]
+	}
+	if system.quirks.LoadStoreIncI {
+		system.iReg = base + uint16(x) + 1
 	}
 }
 

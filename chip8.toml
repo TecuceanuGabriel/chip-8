@@ -1,0 +1,23 @@
+# CHIP-8 configuration
+
+[keymap]
+# Host keyboard mapped to the 4×4 hex pad.
+# The four rows correspond to the CHIP-8 layout:
+#   1 2 3 C
+#   4 5 6 D
+#   7 8 9 E
+#   A 0 B F
+layout = ["1234", "QWER", "ASDF", "ZXCV"]
+
+[quirks]
+# 8XY6 / 8XYE  — shift VY into VX (true = original CHIP-8)
+#                shift VX in place, ignore VY (false = CHIP-48 default)
+shift_uses_vy = false
+
+# BNNN — JP VX, XNN (true = CHIP-48)
+#         JP V0, NNN (false = original CHIP-8 default)
+jump_uses_vx = false
+
+# FX55 / FX65 — increment I after each register access (true = original CHIP-8)
+#               leave I unchanged (false = CHIP-48 default)
+load_store_inc_i = false
