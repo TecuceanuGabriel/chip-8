@@ -43,6 +43,7 @@ func Start(sys *system.System) {
 		readline.PcItem("timers"),
 		readline.PcItem("keys"),
 		readline.PcItem("dis"),
+		readline.PcItem("view"),
 		readline.PcItem("press", keyItems...),
 		readline.PcItem("release", keyItems...),
 		readline.PcItem("help"),
@@ -105,6 +106,7 @@ func Start(sys *system.System) {
 
 		case "c", "continue":
 			sys.DebugChan() <- system.CmdContinue{}
+			printContext(sys)
 
 		case "audio":
 			sys.DebugChan() <- system.CmdToggleAudio{}
@@ -113,6 +115,7 @@ func Start(sys *system.System) {
 			} else {
 				fmt.Println("audio on")
 			}
+			printContext(sys)
 
 		case "reset":
 			sys.DebugChan() <- system.CmdReset{}
@@ -162,6 +165,7 @@ func Start(sys *system.System) {
 			}
 			sys.DebugChan() <- system.CmdSetKey{Key: key}
 			fmt.Printf("key %X pressed\n", key)
+			printContext(sys)
 
 		case "release":
 			key, ok := parseKey(parts, 1)
@@ -171,6 +175,7 @@ func Start(sys *system.System) {
 			}
 			sys.DebugChan() <- system.CmdReleaseKey{Key: key}
 			fmt.Printf("key %X released\n", key)
+			printContext(sys)
 
 		// --- state views ---
 
@@ -211,6 +216,9 @@ func Start(sys *system.System) {
 				n = v
 			}
 			printDis(sys, sys.PC(), n)
+
+		case "v", "view":
+			printContext(sys)
 
 		case "help", "h":
 			printHelp()
@@ -449,6 +457,7 @@ func printHelp() {
 		{"timers / t", "", "show delay and sound timers"},
 		{"keys / k", "", "show key pad state"},
 		{"dis / d", "[N]", "disassemble N instructions from PC"},
+		{"view / v", "", "reprint context view"},
 		{"press", "<0-F>", "inject key press"},
 		{"release", "<0-F>", "inject key release"},
 		{"audio", "", "toggle audio mute"},
