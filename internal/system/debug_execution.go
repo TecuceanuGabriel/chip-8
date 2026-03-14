@@ -69,6 +69,9 @@ func (system *System) waitForDebugCmd() {
 			system.handleDebugCmd(cmd)
 		case <-refresh.C:
 			win.Update()
+			if win.JustPressed(pixelgl.KeyEscape) {
+				os.Exit(0)
+			}
 			if win.JustPressed(pixelgl.KeySpace) {
 				system.isPaused = false
 			}

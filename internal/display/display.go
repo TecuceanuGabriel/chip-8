@@ -22,9 +22,10 @@ type Display struct {
 // NewDisplay opens the application window and returns a ready-to-use Display.
 func NewDisplay() (*Display, error) {
 	cfg := pixelgl.WindowConfig{
-		Title:  "CHIPY",
-		Bounds: pixel.R(0, 0, width*scale, height*scale),
-		VSync:  true,
+		Title:    "CHIPY",
+		Bounds:   pixel.R(0, 0, width*scale, height*scale),
+		Position: pixel.V(0, 0),
+		VSync:    true,
 	}
 
 	win, err := pixelgl.NewWindow(cfg)
