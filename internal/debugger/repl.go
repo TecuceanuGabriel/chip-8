@@ -59,6 +59,16 @@ func Start(sys *system.System) {
 	// The emulator starts paused; show context immediately.
 	printContext(sys)
 
+	// Long-lived goroutine: drains events and reprints context whenever
+	// the game loop sends one (breakpoint hit, step complete, space-pause).
+	go func() {
+		for range sys.EventChan() {
+			rl.Clean()
+			printContext(sys)
+			rl.Refresh()
+		}
+	}()
+
 	for {
 		line, err := rl.Readline()
 		if err == io.EOF || err == readline.ErrInterrupt {
@@ -89,17 +99,9 @@ func Start(sys *system.System) {
 				count = n
 			}
 			sys.DebugChan() <- system.CmdStep{Count: count}
-			<-sys.EventChan()
-			printContext(sys)
 
 		case "c", "continue":
 			sys.DebugChan() <- system.CmdContinue{}
-			go func() {
-				<-sys.EventChan()
-				rl.Clean()
-				printContext(sys)
-				rl.Refresh()
-			}()
 
 		case "audio":
 			sys.DebugChan() <- system.CmdToggleAudio{}
@@ -111,8 +113,6 @@ func Start(sys *system.System) {
 
 		case "reset":
 			sys.DebugChan() <- system.CmdReset{}
-			<-sys.EventChan()
-			printContext(sys)
 
 		case "q", "quit":
 			sys.DebugChan() <- system.CmdQuit{}

@@ -90,7 +90,7 @@ func CreateSystem(romPath string) (system *System) {
 		debug: &debugSession{
 			breakpoints: make(map[uint16]bool),
 			debugChan:   make(chan DebugCmd),
-			eventChan:   make(chan DebugEvent),
+			eventChan:   make(chan DebugEvent, 1),
 		},
 	}
 
@@ -160,7 +160,7 @@ func (system *System) handleInput() bool {
 		return true
 	}
 
-	if win.Pressed(pixelgl.KeySpace) {
+	if win.JustPressed(pixelgl.KeySpace) {
 		if !system.isPaused {
 			system.isPaused = true
 			system.debug.eventChan <- EventStep{PC: system.pc}

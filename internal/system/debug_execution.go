@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/gopxl/pixel/pixelgl"
 )
 
 // runDebugFrame runs one frame's worth of execution in debug mode.
@@ -67,6 +69,9 @@ func (system *System) waitForDebugCmd() {
 			system.handleDebugCmd(cmd)
 		case <-refresh.C:
 			win.Update()
+			if win.JustPressed(pixelgl.KeySpace) {
+				system.isPaused = false
+			}
 		}
 	}
 }
