@@ -48,7 +48,7 @@ Sleep 1s
 Enter
 Sleep 5s
 
-# Scene 3: disassemble from PC
+# Scene 3: disassemble
 Type "dis 8"
 Sleep 1s
 Enter

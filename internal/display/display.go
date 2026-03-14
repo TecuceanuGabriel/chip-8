@@ -1,3 +1,4 @@
+// Package display wraps gopxl/pixel to provide a 64×32 CHIP-8 display scaled to a visible window.
 package display
 
 import (

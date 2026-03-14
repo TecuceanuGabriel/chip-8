@@ -1,3 +1,4 @@
+// debug_protocol.go defines the DebugCmd and DebugEvent sum types used to communicate between the REPL and game loop.
 package system
 
 // DebugCmd is the interface implemented by all commands sent from the debugger

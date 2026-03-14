@@ -1,3 +1,4 @@
+// debug_execution.go runs the game-loop side of the debugger: stepping, breakpoints, and command dispatch.
 package system
 
 import (

@@ -1,3 +1,4 @@
+// config.go loads chip8.toml and exposes the Quirks and keymap configuration.
 package system
 
 import (

@@ -1,3 +1,4 @@
+// Package system implements the CHIP-8 CPU, memory, timers, and main execution loop.
 package system
 
 import (

@@ -3,8 +3,8 @@
 # g8dbg
 
 [![CI](https://github.com/TecuceanuGabriel/g8dbg/actions/workflows/ci.yml/badge.svg)](https://github.com/TecuceanuGabriel/g8dbg/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/TecuceanuGabriel/g8dbg)](https://goreportcard.com/report/github.com/TecuceanuGabriel/g8dbg)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/TecuceanuGabriel/g8dbg)](go.mod)
+[![Go Report Card](https://goreportcard.com/badge/github.com/TecuceanuGabriel/g8dbg)](https://goreportcard.com/report/github.com/TecuceanuGabriel/g8dbg)
 [![License](https://img.shields.io/github/license/TecuceanuGabriel/g8dbg)](LICENSE)
 
 a CHIP-8 debugger written in go

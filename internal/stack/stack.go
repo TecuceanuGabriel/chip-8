@@ -1,3 +1,4 @@
+// Package stack provides a generic LIFO stack used for CALL/RET return addresses.
 package stack
 
 import "fmt"

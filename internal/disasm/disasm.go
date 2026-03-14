@@ -1,3 +1,4 @@
+// Package disasm implements a CHIP-8 disassembler, converting raw opcodes to readable mnemonics.
 package disasm
 
 import "fmt"
