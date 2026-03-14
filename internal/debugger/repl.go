@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/TecuceanuGabriel/chip-8/internal/disasm"
 	"github.com/TecuceanuGabriel/chip-8/internal/system"
@@ -67,6 +69,17 @@ func Start(sys *system.System) {
 	// the game loop sends one (breakpoint hit, step complete, space-pause).
 	go func() {
 		for range sys.EventChan() {
+			rl.Clean()
+			printContext(sys)
+			rl.Refresh()
+		}
+	}()
+
+	// Reprint context automatically on terminal resize (SIGWINCH).
+	go func() {
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGWINCH)
+		for range ch {
 			rl.Clean()
 			printContext(sys)
 			rl.Refresh()

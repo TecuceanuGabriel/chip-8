@@ -25,7 +25,7 @@ func NewDisplay() (*Display, error) {
 		Title:    "CHIPY",
 		Bounds:   pixel.R(0, 0, width*scale, height*scale),
 		Position: pixel.V(0, 0),
-		VSync:    true,
+		VSync:    false,
 	}
 
 	win, err := pixelgl.NewWindow(cfg)
